@@ -1,0 +1,18 @@
+import { ArrowDownUp, ArrowLeft, ArrowRight, CornerUpLeft, CornerUpRight, Flag, LocateFixed, MapPin, Navigation, Pause, Play, RotateCcw, Route } from 'lucide-react';
+import { rooms, roomById } from '../data/questromMapData';
+import { useMapStore } from '../store/useMapStore';
+const options=[...rooms].sort((a,b)=>(a.short||a.name).localeCompare(b.short||b.name));
+export default function WayfindingPanel(){
+  const s=useMapStore();
+  const stepIcons={start:Navigation,left:CornerUpLeft,right:CornerUpRight,arrive:Flag};
+  return <div className="wayfinding"><button className="back-link" onClick={()=>s.setPanel('explore')}><ArrowLeft size={15}/> Back to explore</button><div className="eyebrow">A LITTLE DIRECTION</div><h1>Let’s get you there.</h1><p className="intro">Your next stop is just a few turns away.</p>
+  <div className="route-inputs"><div className="route-dots"><span/><i/><MapPin size={17}/></div><div className="route-fields"><label htmlFor="origin">Starting point</label><select id="origin" value={s.origin} onChange={e=>s.setEndpoint('origin',e.target.value)}>{options.map(r=><option key={r.id} value={r.id}>{r.short||r.name}{r.number?' · '+r.number:''}</option>)}</select><div className="field-divider"/><label htmlFor="destination">Destination</label><select id="destination" value={s.destination} onChange={e=>s.setEndpoint('destination',e.target.value)}>{options.map(r=><option key={r.id} value={r.id}>{r.short||r.name}{r.number?' · '+r.number:''}</option>)}</select></div><button className="swap-button icon-button" aria-label="Swap starting point and destination" onClick={s.swap}><ArrowDownUp size={17}/></button></div>
+  <button className="subtle-link" onClick={()=>{s.setEndpoint('origin','main-entrance');s.notify('Starting point set to Main Entrance. Indoor position is selected manually.');}}><LocateFixed size={14}/> Start at the main entrance</button>
+  {!s.route&&<button className="primary-button route-submit" onClick={s.plan}><Route size={17}/> Find my way <ArrowRight size={17}/></button>}
+  {s.route&&<><div className="route-summary"><div><span className="route-time">{s.route.minutes===0?'You’re here':`~${s.route.minutes} min`}</span><span>Walking estimate · Floor 1</span></div><span className="route-level">Same floor</span></div><div className="estimate-note">Schematic route · distance and access unverified</div>
+  <div className="journey-actions"><button className="primary-button" disabled={s.route.points.length<2} onClick={()=>s.setSimulation(!s.simulating)}>{s.simulating?<Pause size={16}/>:<Play size={16}/>} {s.simulating?'Pause journey':s.progress>=1?'Replay journey':s.progress>0?'Resume journey':'Simulate journey'}</button>{s.progress>0&&<button className="icon-button" aria-label="Restart simulation" onClick={()=>{useMapStore.setState({progress:0,simulating:false});}}><RotateCcw size={16}/></button>}</div>
+  {(s.simulating||s.progress>0)&&<div className="simulation-status" aria-live="polite"><span>{s.progress>=1?'You’ve arrived. Welcome!':'Journey preview · blue dot is simulated'}</span><progress max="1" value={s.progress}/></div>}
+  <div className="steps-heading">YOUR ROUTE <span>{s.route.steps.length} steps</span></div><ol className="route-steps">{s.route.steps.map((step,i)=>{const Icon=stepIcons[step.kind]||ArrowRight;return <li key={i}><span className={`step-icon ${step.kind==='arrive'?'arrival':''}`}><Icon size={16}/></span><div><small>{i===0?'START':i===s.route.steps.length-1?'DESTINATION':`STEP ${i+1}`}</small><p>{step.text}</p></div></li>;})}</ol></>}
+  <div className="route-footnote"><MapPin size={16}/><p>Know your starting point? Select it above. Live indoor positioning isn’t connected.</p></div>
+  </div>;
+}

@@ -1,0 +1,23 @@
+import { useEffect, useRef, useState } from 'react';
+import { categories, footprint, rooms, roomById } from '../data/questromMapData';
+import { pointAlong } from '../lib/routing';
+import { useMapStore } from '../store/useMapStore';
+export default function MapView2D(){
+  const svg=useRef(),pointers=useRef(new Map()),gesture=useRef(null);const [view,setView]=useState({x:-13,z:-15,w:177,h:100});
+  const {select,selected,category,route,progress,simulating,cameraAction}=useMapStore();
+  useEffect(()=>{const a=cameraAction;if(a.type==='reset')setView({x:-13,z:-15,w:177,h:100});if(a.type==='in'||a.type==='out')setView(v=>{const factor=a.type==='in'?.8:1.25;return{x:v.x+v.w*(1-factor)/2,z:v.z+v.h*(1-factor)/2,w:v.w*factor,h:v.h*factor};});if(a.type==='focus'){const r=roomById[a.id];setView(v=>({...v,x:r.center[0]-v.w/2,z:r.center[1]-v.h/2}));}},[cameraAction]);
+  useEffect(()=>{const el=svg.current;const wheel=e=>{e.preventDefault();const f=e.deltaY>0?1.08:.92;setView(v=>{if(v.w*f<35||v.w*f>330)return v;const rect=el.getBoundingClientRect(),tx=(e.clientX-rect.left)/rect.width,tz=(e.clientY-rect.top)/rect.height;return{x:v.x+v.w*(1-f)*tx,z:v.z+v.h*(1-f)*tz,w:v.w*f,h:v.h*f};});};el.addEventListener('wheel',wheel,{passive:false});return()=>el.removeEventListener('wheel',wheel);},[]);
+  const p=route&&pointAlong(route.points,progress);
+  const begin=e=>{pointers.current.set(e.pointerId,[e.clientX,e.clientY]);e.currentTarget.setPointerCapture(e.pointerId);gesture.current={p:[...pointers.current.values()],view,move:0};};
+  const move=e=>{if(!pointers.current.has(e.pointerId))return;pointers.current.set(e.pointerId,[e.clientX,e.clientY]);const g=gesture.current,ps=[...pointers.current.values()],rect=svg.current.getBoundingClientRect();if(ps.length===2&&g.p.length===2){const dist=p=>Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]),f=dist(g.p)/dist(ps);if(g.view.w*f>35&&g.view.w*f<330)setView({...g.view,x:g.view.x+g.view.w*(1-f)/2,z:g.view.z+g.view.h*(1-f)/2,w:g.view.w*f,h:g.view.h*f});g.move=10;}else if(ps.length===1){const dx=ps[0][0]-g.p[0][0],dy=ps[0][1]-g.p[0][1];g.move=Math.hypot(dx,dy);setView({...g.view,x:g.view.x-dx*g.view.w/rect.width,z:g.view.z-dy*g.view.h/rect.height});}};
+  const end=e=>{if(gesture.current?.move<5){const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-room]');if(el)select(el.dataset.room);}pointers.current.delete(e.pointerId);if(pointers.current.size)gesture.current={p:[...pointers.current.values()],view,move:10};};
+  return <svg ref={svg} className="map-svg" viewBox={`${view.x} ${view.z} ${view.w} ${view.h}`} onPointerDown={begin} onPointerMove={move} onPointerUp={end} onPointerCancel={e=>pointers.current.delete(e.pointerId)} role="img" aria-label="Interactive top-down floor plan. Use the searchable directory to select rooms with a keyboard.">
+    <defs><filter id="shadow"><feDropShadow dx="0" dy="1" stdDeviation="1.5" floodOpacity=".09"/></filter></defs>
+    <polygon points={footprint.map(p=>p.join(',')).join(' ')} fill="#eeece5" stroke="#c9c6bc" strokeWidth=".5" filter="url(#shadow)"/>
+    {rooms.map(r=><g key={r.id} data-room={r.id} opacity={category==='all'||category===r.type?1:.25} className="svg-room"><polygon points={r.polygon.map(p=>p.join(',')).join(' ')} fill={r.id===selected?'#cc0000':r.color||categories[r.type].color} stroke={r.id===selected?'#a40000':'#faf7f0'} strokeWidth={r.height<.3?.15:.6}/>{r.label&&!r.suite&&<text x={r.center[0]} y={r.center[1]} textAnchor="middle" fill={selected===r.id?'white':categories[r.type].ink} fontSize={r.featured?1.65:1.5} fontWeight="600">{r.label.map((t,i)=><tspan key={i} x={r.center[0]} dy={i?2:0}>{t}</tspan>)}</text>}</g>)}
+    <circle cx="98" cy="32" r="3" fill="#a5ad96"/><circle cx="98" cy="32" r="4" fill="none" stroke="#879677" strokeWidth=".5"/>
+    {route?.points.length>1&&<><polyline points={route.points.map(p=>p.join(',')).join(' ')} fill="none" stroke="#fff" strokeWidth="1.9" strokeLinejoin="round"/><polyline className="animated-route" points={route.points.map(p=>p.join(',')).join(' ')} fill="none" stroke="#cc0000" strokeWidth=".8" strokeLinecap="round" strokeLinejoin="round"/></>}
+    {p&&(simulating||progress>0)&&<><circle cx={p[0]} cy={p[1]} r="2.2" fill="#4285f4" opacity=".2"/><circle cx={p[0]} cy={p[1]} r="1" fill="#4285f4" stroke="white" strokeWidth=".4"/></>}
+    <text x="82" y="77" textAnchor="middle" className="svg-street">COMMONWEALTH AVENUE</text><text transform="translate(-8 34) rotate(-90)" textAnchor="middle" className="svg-street">SILBER WAY</text>
+  </svg>;
+}
