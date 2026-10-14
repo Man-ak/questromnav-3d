@@ -31,17 +31,28 @@ npm run preview # Preview the production build
 - Deep links such as `?location=105`, responsive mobile directory, light/dark appearance, keyboard focus states, reduced-motion styles, accessible modal, and a 2D option when WebGL fails.
 - The 3D engine is loaded separately, keeping the initial application bundle smaller.
 
-## Map data and accuracy
+## CAD revision — October 14, 2026
 
-The source is [BU’s published first-floor drawing](https://questromapps.bu.edu/maps/images/1new.png), linked from [Questrom Building Floor Maps](https://questromapps.bu.edu/maps/maps595.cfm), accessed October 13, 2026. The user’s message did not include an attached floor-plan file. Geometry was manually digitized from this public reference.
+This revision replaces the earlier public-overview geometry with eight manager-supplied CAD screenshots. Shared walls, room widths, and repeated features register the crops into a common drawing coordinate system. The screenshots themselves remain private working references and are not included in the app, public assets, or downloads. This is a manual tracing of raster screenshots, not an import of the original CAD vectors.
 
-The dataset preserves room and suite numbers printed on the source, including the numbered undergraduate offices, 108/104/101/102 lettered offices, 114, 138, 140A, and 150/150A. It does **not** invent missing 137, 139, or 140 rooms. The source prints two “D” labels within the 101 suite; the eastern one uses the internal ID `101D-east` to avoid a duplicate key.
+There are 116 selectable spaces, 114 authored doorway portals, and 112 routable spaces. Office **101H is removed entirely** from the model, partitions, furniture, search, selectors, and routes. A saved bookmark or shared URL for the deleted room no longer resolves. Its former footprint is modeled as open circulation, per the user's correction; confirm the precise replacement layout on site. The old duplicate `101D-east` identifier is replaced by the CAD's single 101D, and 101I plus 102D/102E are included. CAD labels 110/112 and 115/140 are searchable circulation aliases rather than invented offices.
 
-`src/data/questromMapData.js` holds each room’s ID, number, polygon, center, type, floor, entrance point, description, hours, and rendering metadata. Coordinates use x increasing right/east and z increasing down/south, matching the source drawing. They are **drawing units, not meters**. Doorway locations and graph connections are approximate. Walking times use a documented heuristic (`ceil(route drawing units / 65)`), not a surveyed building scale. No distance in meters is represented as verified.
+Door positions and widths follow the visible door symbols in the supplied screenshots. Enclosed office walls are split around the very same doorway data used by both renderers and the route graph. Routes pass from an approach point, through the door threshold, to an arrival point inside the destination. Interior suites connect to public corridors through their suite entrances. Multi-door suites choose among authored entrances. There is **no nearest-wall or nearest-corridor fallback**, and no straight line from a room center to an arbitrary corridor. Open entrances such as the 104F opening are explicitly modeled as open portals.
 
-Capacity for Auditorium 105 (373) comes from [Questrom Registrar’s room information](https://questromworld.bu.edu/qro/room-info/). Susilo hours come from [the center’s official page](https://questromworld.bu.edu/susilobusinesscenter/); hours for other spaces remain explicitly unconfirmed. That page lists Susilo as Room 186; the source drawing labels the zone by name, so its internal ID is `susilo` rather than an invented room number.
+The model adds 373 schematic auditorium seats in sixteen fan-shaped rows, three seating banks and radial aisles; a curved stage and podium; office workstations, meeting tables, chairs, storage, stair treads, lift cabins, glazing, atrium café seating, and the sculpture landmark. Furniture follows the visible types and layout patterns, but its dimensions, seat spacing, elevations, materials and heights remain illustrative. The 373-seat capacity is retained from the earlier [Questrom Registrar reference](https://questromworld.bu.edu/qro/room-info/); the screenshot tracing does not independently verify a seating schedule.
 
-This is an independent prototype, not an official BU service. Before using it for real-world navigation, validate polygons, doorway positions, walking scale, room ownership, operating hours, and corridor access with building staff. The source does not identify emergency exits or certify accessible routes, so the app does not invent an evacuation overlay or an accessibility guarantee. Entrance searches recognize “exit”, and staircases are mapped; follow posted building signage for egress. Indoor GPS is not implemented: the origin is manually selected and the blue dot is a simulation. Default origin is Main Entrance.
+### Geometry and routing limits
+
+- Coordinates are drawing units, using 20 registered image pixels per unit. They are **not surveyed meters**. Crops contain small alignment differences, resolved at shared doorway boundaries. No measurements or elevations were supplied.
+- Geometry is interpreted from the screenshots, not directly from the CAD file. Room ownership, current use, door locks, access restrictions, and circulation permissions require on-site verification. Some support-space names are deliberately generic.
+- Room 127, Service Passage 182A, Room 198 and cropped support space 105C are visible but have no confirmed complete doorway connection. They remain selectable, with an explanation and a disabled directions button. They are excluded from route endpoint selectors. Their incomplete geometry is indicative only.
+- The north wing is routed through the visible west-side corridor. An uncertain secondary connection around Room 114 is not manufactured to shorten routes.
+- Automated tests verify all authored approach segments against every solid wall, including suite entrance partitions, and check that each destination is entered via its portal. This proves consistency within the traced model, not real-world access or clearance certification.
+- Walking-time estimates retain the heuristic `ceil(route drawing units / 65)`, with a minimum of one minute. Calibrate only after a real building scale is confirmed.
+- Susilo's displayed hours are retained from [its official page](https://questromworld.bu.edu/susilobusinesscenter/); other hours remain unconfirmed. The CAD now identifies the zone as Room 186.
+- The older [BU public floor-plan overview](https://questromapps.bu.edu/maps/images/1new.png) remains a secondary reference in the help panel. The CAD screenshots take precedence for partitions and doorway positions; the user's removal of 101H takes precedence over both drawings.
+
+This remains an independent prototype, not an official BU service or an emergency/accessibility routing system. Use posted building signage for egress and access. Live indoor positioning is not connected: the origin is selected manually and the blue dot is simulated. This CAD revision is published through the GitHub Pages workflow. The original CAD screenshots are excluded from the public source.
 
 ## Project structure
 
@@ -51,13 +62,17 @@ src/
   main.jsx                      React entry point
   styles.css                    Responsive theme and Tailwind layers
   components/
-    MapView3D.jsx               Extruded geometry, camera rig, 3D route
+    MapView3D.jsx               Camera rig and 3D route
+    CadModel.jsx                Door-cut walls and instanced CAD detail
     MapView2D.jsx               SVG blueprint and pointer gestures
     Searchbar.jsx               Accessible fuzzy-search combobox
     WayfindingPanel.jsx         Endpoint controls, instructions, simulation
     LocationCard.jsx            Room details, share and save actions
-  data/questromMapData.js        Room polygons, metadata, corridor graph
-  lib/routing.js                Dijkstra, projection, search, interpolation
+  data/questromMapData.js        Public data-module exports
+  data/cadFloorData.js           Registered CAD tracing, polygons, doors, graph
+  data/furniture.js              Instanced furniture and seating layout
+  lib/routing.js                Explicit portal graph, Dijkstra, search, interpolation
+  lib/geometry.js               Polygon tests, wall splits and intersections
   store/useMapStore.js           Shared map and navigation state
 tests/routing.test.js            Meaningful data/algorithm tests
 .github/workflows/pages.yml      GitHub Pages deployment
@@ -86,4 +101,5 @@ For any static hosting provider, upload the contents of `dist/` to its web root.
 
 ## Maintain and extend
 
-Update room polygons and metadata in the data file. Preserve stable IDs so bookmarks and shared URLs remain valid. Add corridor nodes at junctions, connect bidirectional edges, and keep segments outside solid room interiors. Run `npm test` after edits. Replace the walking-time heuristic only when an actual drawing scale is verified. To add more floors, extend the dataset and connect vertical transportation in the routing graph before enabling more floor choices. A live positioning service would need a real indoor-positioning provider and appropriate user consent; browser GPS alone cannot establish a reliable indoor room-level location.
+Update traced polygons, doorway normals, and their explicit graph approaches in `src/data/cadFloorData.js`. Update furniture in `src/data/furniture.js`. Preserve stable IDs so bookmarks and shared URLs remain valid. Add corridor nodes at junctions and connect bidirectional edges through observed portals. Never replace a missing door with a geometric snap. Unconfirmed doors must remain unroutable. Run `npm test` after edits. Replace the walking-time heuristic only when an actual drawing scale is verified. To add more floors, extend the dataset and connect vertical transportation in the routing graph before enabling more floor choices. A live positioning service would need a real indoor-positioning provider and appropriate user consent; browser GPS alone cannot establish a reliable indoor room-level location.
+
