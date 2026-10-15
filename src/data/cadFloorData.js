@@ -130,6 +130,7 @@ roomById['105G'].doors[0].via=[P(9,400,120)];
 // The sculpture occupies the middle; both sides are walkable directly across the atrium.
 node('atriumDirectWest',10,280,245);node('atriumStairFoot',0,2573,555);node('atriumDirectEast',10,560,245);
 node('atriumWestClear',10,280,150);
+roomById['stairs-main'].doors[0].node='atriumStairFoot';
 link('atriumSouth','atriumDirectWest','atriumWestClear','atriumStairFoot','atriumNorth');link('atriumSouth','atriumDirectEast','atriumStairFoot');
 node('eastLiftFront',10,690,157);node('eastLiftHall',10,790,157);node('eastLiftApproach',10,660,125);
 node('eastStairApproach',10,690,350);node('eastStairDoor',10,899,350);link('admissionsEntry','eastStairApproach','eastStairDoor');
