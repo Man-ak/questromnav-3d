@@ -33,14 +33,16 @@ npm run preview # Preview the production build
 
 ## CAD revision — October 15, 2026
 
-This revision registers eleven manager-supplied CAD screenshots. The three latest close-ups clarify the auditorium, east elevator/stair core and exterior parking way. The screenshots remain private and are excluded from the app, repository and downloads. This is manual tracing of raster references, not an import of CAD vectors.
+This revision registers thirteen manager-supplied CAD screenshots. The latest close-ups clarify Susilo, the open atrium, loading dock and service connections. Department locations and service access were explicitly confirmed by the user. The screenshots remain private and are excluded from the app, repository and downloads. This is manual tracing of raster references, not an import of CAD vectors.
 
-There are **121 selectable spaces, 123 authored navigation portals and 118 routable spaces**. Office **101H remains excluded** from geometry, doors, furniture, labels, search, routes and saved links. Its former area remains open circulation. IDs refer to physical locations; the existing `udc` link now selects Graduate Admissions in the north wing, while 101/102 contain the relocated Undergraduate Development Center. Names, search and route instructions reflect this change.
+There are **120 selectable spaces, 126 authored portals and 115 visitor-routable spaces**. Office **101H remains excluded** from geometry, doors, furniture, labels, search, routes and saved links. Its former area remains open circulation. IDs refer to physical locations; the existing `udc` link selects Undergraduate Development Center in rooms 115–140, while 101/102 contain Graduate Admissions & Financial Aid. Names, search and route instructions reflect this change.
 
 - **Auditorium:** 105A, 105B and 105D are connected areas of the same entrance foyer, without invented dividing walls. Internal doors connect it to the auditorium. 105C is the enclosed projector cabin with its own door. The rebuilt shallow timber stage has a bowed front, paneled backdrop, lectern and side steps. Three seating banks face west toward the stage, with two clear cross aisles and perimeter circulation. The 373 modeled seats are schematic; they are not a verified seat-by-seat schedule or occupancy certificate.
 - **Feld / suite 108:** public entry goes through the main Feld Center doorway, then its internal corridor. Both public-facing suite 108 doors are modeled as exit only to enforce the user's Feld-only entry requirement. Each exit portal has outward-only graph edges. The internal suite junction stays bidirectional. Dijkstra respects those directions, so the return journey may be shorter. Existing bookmarks still use physical room IDs.
-- **Atrium:** open circulation crosses the atrium on either side of the sculpture. Routes to the main staircase and east lifts no longer depend on a perimeter-only graph. The sculpture clearance is tested.
-- **East core:** 181A/B face south and 181C/D face north into the shared 181K lobby. The adjacent east stairwell has opposed flights and a landing to the right of the lift bank. Lift doors have center-opening metal panels and call buttons.
+- **Atrium:** the white floor in the latest crop is a free-walking region. A visibility graph joins open-floor points directly where there is a clear line past walls and the central sculpture. It replaces fixed corridor bends across the atrium. A ring outside the sculpture footprint supplies short paths around it when a straight crossing is blocked. No artificial corridor is required to reach the main stairs. Tree-like planters are removed. Four CAD seating groups have 98 stylized upholstered seats, 32 café/coffee tables, oak finishes, and warm neutral rugs. These are model counts, not a verified furniture inventory. 2D and 3D share the layout.
+- **East core:** passenger lifts 181A/C/D open to 181K. Freight elevator 181B has opposing doorways to 181K and 185A; the vestibule meets its rear threshold. The east stair landing 183A is physically joined to passage 184 at the confirmed door. Both freight elevator 181B and the east service staircase are visible and searchable but excluded from all visitor origins, destinations, and routing edges. `serviceConnections` records these physical connections without enabling emergency routing. Lift doors have metal panels and call buttons.
+- **Susilo:** the basic interior follows the CAD reception counter’s L-shaped footprint and west-wall shelving location. Counter panels, worktops, monitors and generic paper stacks are schematic pending on-site photographs. The former separate office identity is removed from public labels, search, URLs and route selectors. Its footprint is grouped under 187B, retaining the physical divider and existing door. Its service-side door is drawn without exposing a new visitor route or claiming a certified refuge.
+- **188:** an open loading dock with two raised shutter bays and the retained center support. It is no longer drawn as a closed office. Existing visitor endpoint availability is retained; no freight-elevator or service-stair route is introduced.
 - **Entrances:** framed glazing, multiple door bays, pull handles, transoms, entrance mats and stone surrounds replace oversized door leaves. The main entrance has a Questrom fascia. Silber Way retains its CAD vestibule and a photo-informed material treatment.
 - **198:** an exterior asphalt parking passage with lane markings and a barrier, outside the indoor slab. It is selectable for identification but excluded from pedestrian routing.
 
@@ -73,14 +75,17 @@ src/
   components/
     MapView3D.jsx               Camera rig and 3D route
     CadModel.jsx                Door-cut walls and instanced CAD detail
-    ArchitecturalDetails.jsx    Entrance glazing, stage backdrop, lift doors, parking
+    ArchitecturalDetails.jsx    Entrances, Susilo interior, raised shutters, lift doors
     MapView2D.jsx               SVG blueprint and pointer gestures
     Searchbar.jsx               Accessible fuzzy-search combobox
     WayfindingPanel.jsx         Endpoint controls, instructions, simulation
     LocationCard.jsx            Room details, share and save actions
   data/questromMapData.js        Public data-module exports
   data/cadFloorData.js           Registered CAD tracing, polygons, doors, graph
-  data/furniture.js              Instanced furniture and seating layout
+  data/furniture.js              Instanced office furniture and auditorium seats
+  data/atriumLayout.js            Shared CAD seating groups and free-walking region
+  data/susiloLayout.js            Counter footprint and basic shelf layout
+  lib/atriumNavigation.js         Open-floor visibility connections around sculpture
   lib/routing.js                Explicit portal graph, Dijkstra, search, interpolation
   lib/geometry.js               Polygon tests, wall splits and intersections
   store/useMapStore.js           Shared map and navigation state

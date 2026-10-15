@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { categories, footprint, rooms, roomById, wallSegments, doors, sculptureCenter } from '../data/questromMapData';
 import { pointAlong } from '../lib/routing';
 import { useMapStore } from '../store/useMapStore';
+import { atriumSeats, atriumTables, atriumRugs, sculptureRadius } from '../data/atriumLayout';
+import { receptionFootprint } from '../data/susiloLayout';
 import { chairs, stagePolygon } from '../data/furniture';
 export default function MapView2D(){
   const svg=useRef(),pointers=useRef(new Map()),gesture=useRef(null);const [view,setView]=useState({x:-10,z:-10,w:202,h:110});
@@ -18,6 +20,12 @@ export default function MapView2D(){
     <polygon points={footprint.map(p=>p.join(',')).join(' ')} fill="#eeece5" stroke="#c9c6bc" strokeWidth=".5" filter="url(#shadow)"/>
     {[...rooms].sort((a,b)=>a.height-b.height).map(r=><g key={r.id} data-room={r.id} opacity={category==='all'||category===r.type?1:.25} className="svg-room"><polygon points={r.polygon.map(p=>p.join(',')).join(' ')} fill={r.id===selected?'#cc0000':r.color||categories[r.type].color} stroke={r.id===selected?'#a40000':'#faf7f0'} strokeWidth={r.height<.3?.15:.6}/>{r.label&&(!r.suite||view.w<110||selected===r.id)&&<text x={r.center[0]} y={r.center[1]} textAnchor="middle" fill={selected===r.id||r.outdoor?'white':categories[r.type].ink} fontSize={r.featured?1.65:1.5} fontWeight="600">{r.label.map((t,i)=><tspan key={i} x={r.center[0]} dy={i?2:0}>{t}</tspan>)}</text>}</g>)}
     <g pointerEvents="none"><polygon points={stagePolygon.map(p=>p.join(',')).join(' ')} fill="#b69a79"/>{chairs.filter(c=>c.color==='auditorium').map((c,i)=><rect key={i} x={c.x-.3} y={c.z-.3} width=".6" height=".6" rx=".09" fill="#a56f65" transform={`rotate(${-c.angle*180/Math.PI} ${c.x} ${c.z})`}/>)}</g>
+    <g pointerEvents="none">
+      {atriumRugs.map((r,i)=><rect key={i} x={r.x-r.w/2} y={r.z-r.d/2} width={r.w} height={r.d} rx=".45" fill="#e4dbca" stroke="#cfc5b2" strokeWidth=".12"/>)}
+      {atriumTables.map((t,i)=><circle key={i} cx={t.x} cy={t.z} r={t.r} fill="#d6bd94" stroke="#9e8b6c" strokeWidth=".08"/>)}
+      {atriumSeats.map((c,i)=><rect className="atrium-seat" key={i} x={c.x-.44} y={c.z-.43} width=".88" height=".86" rx=".18" transform={`rotate(${-c.angle*180/Math.PI} ${c.x} ${c.z})`} fill={c.tone==='scarlet'?'#b9584b':'#caba9b'}/>)}
+      <polygon className="susilo-counter" points={receptionFootprint.map(p=>p.join(',')).join(' ')} fill="#b2916b" stroke="#f3ead7" strokeWidth=".13"/>
+    </g>
     {wallSegments.map((w,i)=><line key={i} x1={w.a[0]} y1={w.a[1]} x2={w.b[0]} y2={w.b[1]} stroke="#8a9183" strokeWidth=".18" pointerEvents="none"/>)}
     {doors.map(d=>{const t=[-d.normal[1],d.normal[0]],a=[d.point[0]-t[0]*d.width/2,d.point[1]-t[1]*d.width/2],b=[d.point[0]+t[0]*d.width/2,d.point[1]+t[1]*d.width/2];return <g key={d.id} className="svg-door" pointerEvents="none"><line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#ae8d58" strokeWidth=".16"/>{d.kind==='single'&&<path d={`M ${a[0]} ${a[1]} L ${a[0]-d.normal[0]*d.width} ${a[1]-d.normal[1]*d.width} A ${d.width} ${d.width} 0 0 1 ${b[0]} ${b[1]}`} fill="none" stroke="#6d999f" strokeWidth=".08"/>}</g>;})}
     <g pointerEvents="none">
@@ -26,7 +34,7 @@ export default function MapView2D(){
       {doors.filter(d=>d.exitOnly).map(d=><text key={d.id} x={d.point[0]} y={d.point[1]-1} fontSize=".95" textAnchor="middle" fill="#a12520">EXIT ONLY ↑</text>)}
       {(()=>{const p=roomById['198'].polygon,x=(p[0][0]+p[1][0])/2;return <line x1={x} x2={x} y1={p[0][1]+1} y2={p[2][1]-1} stroke="#eee5c8" strokeWidth=".15" strokeDasharray="1.7 1.8"/>;})()}
     </g>
-    <circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r="3.8" fill="#a5ad96"/><circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r="4.5" fill="none" stroke="#879677" strokeWidth=".5"/>
+    <circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r={sculptureRadius} fill="#b7b6ab"/><circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r={sculptureRadius} fill="none" stroke="#7b827a" strokeWidth=".5"/>
     {route?.points.length>1&&<><polyline points={route.points.map(p=>p.join(',')).join(' ')} fill="none" stroke="#fff" strokeWidth="1.9" strokeLinejoin="round"/><polyline className="animated-route" points={route.points.map(p=>p.join(',')).join(' ')} fill="none" stroke="#cc0000" strokeWidth=".8" strokeLinecap="round" strokeLinejoin="round"/></>}
     {p&&(simulating||progress>0)&&<><circle cx={p[0]} cy={p[1]} r="2.2" fill="#4285f4" opacity=".2"/><circle cx={p[0]} cy={p[1]} r="1" fill="#4285f4" stroke="white" strokeWidth=".4"/></>}
     <text x="115" y="93" textAnchor="middle" className="svg-street">COMMONWEALTH AVENUE</text><text transform="translate(-8 35) rotate(-90)" textAnchor="middle" className="svg-street">SILBER WAY</text>

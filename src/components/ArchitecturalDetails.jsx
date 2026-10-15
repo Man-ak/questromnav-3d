@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { receptionSegments, susiloShelf } from '../data/susiloLayout';
 import { cadPoint as P, roomById, doors } from '../data/questromMapData';
 
 function Block({at,size,color='#d9d0bb',glass=false,rotation=0}){
@@ -94,4 +95,34 @@ function LiftDoors(){return <>{doors.filter(d=>d.kind==='lift').map(d=>{
   <Sign at={[0,2.83,.12]} size={[d.width+.2,.38]} text={r.number}/>
  </group>;
  })}</>;}
-export default function ArchitecturalDetails(){return <><Entrance/><Entrance west/><Auditorium/><LobbyDetails/><Parking/><LiftDoors/></>;}
+function SusiloInterior(){
+ const [sx,sz]=susiloShelf.position,[signX,signZ]=P(1,1138,392);
+ return <group>
+  {receptionSegments.map((c,i)=><group key={i}>
+   <Block at={[c.position[0],.79,c.position[1]]} size={[c.w-.08,1.1,c.d-.08]} color="#a98562"/>
+   <Block at={[c.position[0],1.41,c.position[1]]} size={[c.w+.1,.16,c.d+.1]} color="#ece5d6"/>
+   <Block at={[c.position[0],.3,c.position[1]]} size={[c.w-.2,.12,c.d-.2]} color="#5e625a"/>
+  </group>)}
+  <Sign at={[signX,.95,signZ+.08]} size={[3.1,.58]} text="SUSILO BUSINESS CENTER" background="#a98562" color="#fff4df"/>
+  {[0,1,2,3].map(i=><group key={i}>
+   <Block at={[sx,.55+i*.59,sz]} size={[susiloShelf.w,.09,susiloShelf.d]} color="#b2916b"/>
+   {[-1,0,1].map(j=><Block key={j} at={[sx+.05,.72+i*.59,sz+j*2.1]} size={[.52,.21,1.35]} color={(i+j)%2?'#eee7d7':'#d1bf9e'}/>)}
+  </group>)}
+  {[-1,1].map(j=><Block key={j} at={[sx,1.5,sz+j*susiloShelf.d/2]} size={[susiloShelf.w,2.6,.1]} color="#a58b69"/>)}
+  {[[1120,379,0],[1187,420,-Math.PI/2]].map(([x,z,rotation],i)=>{const[a,b]=P(1,x,z);return <group key={i} position={[a,0,b]} rotation={[0,rotation,0]}>
+   <Block at={[0,1.55,0]} size={[.55,.08,.3]} color="#505b55"/><Block at={[0,1.72,0]} size={[.08,.3,.08]} color="#505b55"/>
+   <Block at={[0,1.99,0]} size={[1.15,.63,.1]} color="#3c4744"/><Block at={[0,1.99,.06]} size={[1.02,.5,.015]} color="#a9c2bd"/>
+   <Block at={[0,1.52,.4]} size={[.85,.035,.28]} color="#626a62"/>
+  </group>;})}
+ </group>;
+}
+function LoadingDock(){return <group>{roomById['188'].doors.map(d=>{
+ const[x,z]=d.point;return <group key={d.id}>
+  {[-1,1].map(side=><Block key={side} at={[x+side*d.width/2,1.65,z]} size={[.15,2.9,.19]} color="#67726e"/>)}
+  <Block at={[x,3.2,z]} size={[d.width+.3,.22,.42]} color="#69756f"/>
+  {[0,1,2,3,4].map(i=><Block key={i} at={[x,3.3+i*.1,z]} size={[d.width,.075,.25]} color="#b2b7af"/>)}
+  <Block at={[x,.27,z+.5]} size={[d.width,.025,.15]} color="#d7b55e"/>
+ </group>;
+})}</group>;}
+
+export default function ArchitecturalDetails(){return <><Entrance/><Entrance west/><Auditorium/><LobbyDetails/><Parking/><LiftDoors/><SusiloInterior/><LoadingDock/></>;}
