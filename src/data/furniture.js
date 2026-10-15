@@ -19,20 +19,41 @@ for(const r of rooms){
  if(r.furniture==='business'){box(x,.85,z,5,.16,1.5,'wood');for(const shift of [-2,0,2])box(x+shift,.6,z-2,1.6,1.1,1.2,'cabinet');}
  if(r.furniture==='stairs'){const stepDepth=(d-1.2)/16;for(let i=0;i<16;i++)box(x,.25+i*.09,b.maxZ-.6-(i+.5)*stepDepth,w-.8,.18,stepDepth,'stair');}
 }
-// 16 fan-shaped seating rows in three banks; gaps form the radial aisles.
-const [stageX,stageZ]=P(5,1040,391),aud=rooms.find(r=>r.id==='105');
+// Sixteen curved ranks with two clear cross aisles: 373 schematic seats.
 for(let row=0;row<16;row++){
- const radius=14+row*1.48,middle=12+Math.floor(row/2)-(row>=13?1:0),banks=[[-.37,-.26,4],[-.20,.20,middle],[.26,.37,4]],rise=row*.045;
- auditoriumTiers.push({radius,rise,center:[stageX,stageZ]});
- for(const[min,max,count]of banks)for(let i=0;i<count;i++){const angle=min+(max-min)*i/(count-1),x=stageX+Math.cos(angle)*radius,z=stageZ+Math.sin(angle)*radius;if(pointInPolygon([x,z],aud.polygon))chair(x,z,-Math.PI/2-angle,rise,'auditorium');}
+ const middle=15+(row>=11?1:0),rise=row*.055,polygons=[];
+ for(const [bank,count]of [[0,4],[1,middle],[2,4]]){
+  const trace=[];
+  for(let i=0;i<count;i++){
+   const t=i/(count-1),u=t*2-1;
+   const x=bank===1?480+row*22.7+8*(1-u*u):450+row*24+5*(1-u*u);
+   const z=bank===0?70+t*45-row*.9:bank===2?370+t*45+row*.7:154+t*179;
+   const [cx,cz]=P(9,x,z);chair(cx,cz,Math.PI/2,rise,'auditorium');trace.push([cx,cz]);
+  }
+  polygons.push([...trace.map(([x,z])=>[x-.62,z]),...[...trace].reverse().map(([x,z])=>[x+.62,z])]);
+ }
+ auditoriumTiers.push({rise,polygons});
 }
+// Opposed flights and a full-width landing in the east stairwell.
+const stair=rooms.find(r=>r.id==='stairs-east'),sb=polygonBounds(stair.polygon);
+for(let i=0;i<12;i++){
+ const z=sb.maxZ-1.6-(i+.5)*.92;
+ box(sb.minX+1.4,.27+i*.13,z,1.9,.22,.94,'stair');
+ box(sb.maxX-1.4,1.83+(11-i)*.13,z,1.9,.22,.94,'stair');
+}
+box((sb.minX+sb.maxX)/2,1.72,sb.minZ+2.7,4.35,.25,2.4,'stair');
+for(const x of [sb.minX+.38,sb.minX+2.48,sb.maxX-.38])for(let i=0;i<7;i++)box(x,1+i*.24,sb.maxZ-1.9-i*1.65,.06,1.4,.06,'metal');
+// Short paired flights in the shared auditorium foyer leave the middle passage open.
+for(const [z,sign]of [[81,1],[375,-1]])for(let i=0;i<5;i++){const[x,y]=P(9,953,z+sign*i*6);box(x,.26+i*.1,y,5.4,.16,.44,'stair');}
+// Projector lens faces the stage through the glazed cabin aperture.
+{const[x,z]=P(9,925,257);box(x,1.3,z,1.4,.55,1,'screen');box(x,.65,z,2,.1,1.4,'metal');}
 // Atrium café tables and lounge chairs from the visible clusters in crops 1 and 8.
 for(const [sx,sz]of [[200,560],[355,560],[205,710],[355,710],[770,560],[924,560],[770,710],[924,710]]){
  const[x,z]=P(1,sx,sz);round(x,.82,z,1.05,.12,'wood');round(x,.43,z,.16,.8,'metal');for(let i=0;i<4;i++){const a=i*Math.PI/2;chair(x+Math.cos(a)*1.7,z+Math.sin(a)*1.7,-a+Math.PI/2);}
 }
 for(const[sx,sz]of [[275,620],[850,635]]){const[x,z]=P(1,sx,sz);round(x,.55,z,.8,.09,'wood');for(let i=0;i<4;i++){const a=i*Math.PI/2;chair(x+Math.cos(a)*1.55,z+Math.sin(a)*1.55,-a+Math.PI/2,0,'lounge');}}
 const[rx,rz]=P(2,850,280);box(rx,.75,rz,2,.9,1.2,'lounge');box(rx,.75,rz+3,2,.9,1.2,'lounge');round(rx+2,.6,rz+1.5,.65,.12,'wood');
-export const stagePolygon=[[1035,265],[1090,250],[1143,285],[1177,340],[1177,435],[1143,500],[1090,531],[1035,531]].map(p=>P(5,...p));
-export const podium=P(5,1127,391);
+export const stagePolygon=[[328,165],[410,165],...Array.from({length:25},(_,i)=>{const t=i/24;return[410+18*Math.sin(t*Math.PI),165+162*t];}),[328,327]].map(p=>P(9,...p));
+export const podium=P(9,393,280);
 export const planters=[P(0,2150,730),P(0,2950,730),P(0,2150,1060),P(0,2950,1060)];
 export { sculptureCenter };

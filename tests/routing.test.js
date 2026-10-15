@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rooms, doors, roomById, wallSegments, cadPoint, mapRevision } from '../src/data/questromMapData.js';
+import { rooms, doors, roomById, wallSegments, cadPoint, mapRevision, sculptureCenter } from '../src/data/questromMapData.js';
+import { chairs, stagePolygon } from '../src/data/furniture.js';
 import { findRoute, pointAlong, searchRooms, navigationGraph } from '../src/lib/routing.js';
 import { distance, pointInPolygon, projectOnSegment, segmentIntersection, splitWall } from '../src/lib/geometry.js';
 
 test('CAD revision removes 101H and replaces the older admissions labels',()=>{
  assert.equal(roomById['101H'],undefined);assert.equal(roomById['101D-east'],undefined);assert.deepEqual(searchRooms('101H'),[]);
  for(const id of ['101I','101A','101B','101C','101D','101E','101F','101G','102D','102E','105D','105E','105F','105G','105H','113','117A','125A','188'])assert.ok(roomById[id],id);
- assert.equal(new Set(rooms.map(r=>r.id)).size,rooms.length);assert.equal(mapRevision.source,'Eight user-supplied CAD screenshots');
+ assert.equal(new Set(rooms.map(r=>r.id)).size,rooms.length);assert.equal(mapRevision.source,'Eleven user-supplied CAD screenshots');
 });
 test('every authored door is on its room boundary and enters its interior',()=>{
  for(const d of doors){const r=roomById[d.roomId],closest=Math.min(...r.polygon.map((p,i)=>projectOnSegment(d.point,p,r.polygon[(i+1)%r.polygon.length]).distance));assert.ok(closest<.02,`${d.id} misses wall by ${closest}`);assert.ok(pointInPolygon(d.inside,r.polygon),`${d.id} arrival must be inside`);assert.ok(!pointInPolygon(d.outside,r.polygon),`${d.id} approach must be outside`);assert.ok(d.width>=1.6);}
@@ -22,11 +23,11 @@ test('all confirmed destinations connect from both entrances through the destina
  }
 });
 test('unconfirmed doors fail closed; there is no nearest-wall fallback',()=>{
- for(const id of ['198','182A','127','105C']){assert.equal(roomById[id].routable,false);assert.equal(findRoute('main-entrance',id),null);}
+ for(const id of ['198','182A','127']){assert.equal(roomById[id].routable,false);assert.equal(findRoute('main-entrance',id),null);}
  assert.equal(findRoute('bad','105'),null);assert.equal(findRoute('105','101H'),null);assert.equal(findRoute('105','105').units,0);
 });
-test('door-aware paths are symmetric and multi-door endpoints never teleport',()=>{
- for(const [a,b]of [['main-entrance','108A'],['108','101G'],['101G','104M'],['105E','186A'],['108L','114']]){
+test('bidirectional areas have symmetric paths and multi-door endpoints never teleport',()=>{
+ for(const [a,b]of [['main-entrance','105C'],['102B','101G'],['101G','104M'],['105E','186A'],['136','114']]){
   const f=findRoute(a,b),r=findRoute(b,a);assert.ok(Math.abs(f.units-r.units)<1e-7);assert.ok(f.points.some(p=>distance(p,doors.find(d=>d.id===f.startDoor).point)<1e-8));
   for(let i=1;i<f.points.length;i++)for(const w of wallSegments){const h=segmentIntersection(f.points[i-1],f.points[i],w.a,w.b);assert.ok(!h||h.t<.001||h.t>.999||h.u<.005||h.u>.995,'Endpoint connector crosses a wall');}
  }
@@ -46,5 +47,38 @@ test('journey interpolation has exact endpoints, including pauses and same-point
  const route=findRoute('main-entrance','108A');assert.deepEqual(pointAlong(route.points,0),route.points[0]);assert.deepEqual(pointAlong(route.points,1),route.points.at(-1));assert.deepEqual(pointAlong([[0,0],[10,0],[10,10]],.75),[10,5]);assert.deepEqual(pointAlong([[4,5]],.5),[4,5]);assert.equal(pointAlong([],0),null);
 });
 test('search finds precise new room IDs, amenities and department aliases',()=>{
- assert.equal(searchRooms('105')[0].id,'105');assert.equal(searchRooms('102E')[0].id,'102E');assert.equal(searchRooms('101I')[0].id,'101I');assert.ok(searchRooms('graduate admissions').some(r=>r.id==='101'));assert.ok(searchRooms('bathroom').some(r=>r.id==='restroom-w'));assert.ok(searchRooms('auditorum').some(r=>r.id==='105'));assert.ok(searchRooms('Susilo Center').some(r=>r.id==='susilo'));assert.equal(searchRooms('xyzzyq').length,0);
+ assert.equal(searchRooms('105')[0].id,'105');assert.equal(searchRooms('102E')[0].id,'102E');assert.equal(searchRooms('101I')[0].id,'101I');assert.equal(searchRooms('graduate admissions')[0].id,'udc');assert.ok(searchRooms('bathroom').some(r=>r.id==='restroom-w'));assert.ok(searchRooms('auditorum').some(r=>r.id==='105'));assert.ok(searchRooms('Susilo Center').some(r=>r.id==='susilo'));assert.equal(searchRooms('xyzzyq').length,0);
+});
+
+test('suite 108 entry always passes Feld; exit-only doors work outward',()=>{
+ const threshold=roomById['104'].doors[0].point;
+ for(const start of ['main-entrance','silber-entrance','105','udc','101'])for(const end of rooms.filter(r=>r.suite==='108'||r.id==='108')){
+  const r=findRoute(start,end.id);assert.ok(r.points.some(p=>distance(p,threshold)<.001),`${start} → ${end.id} bypasses Feld`);
+ }
+ const incoming=findRoute('silber-entrance','108A'),outgoing=findRoute('108A','silber-entrance');
+ assert.ok(outgoing.units<incoming.units);assert.ok(!outgoing.points.some(p=>distance(p,threshold)<.001));
+ const exit=roomById['108'].doors[0];assert.ok(outgoing.points.some(p=>distance(p,exit.point)<.001));
+ // The authored graph itself has no public-to-suite edge at either exit.
+ for(const d of roomById['108'].doors.filter(d=>d.exitOnly))assert.ok(navigationGraph.edges.filter(e=>e[0].startsWith(d.id)||e[1].startsWith(d.id)).some(e=>e[2]===true));
+});
+
+test('department moves retain physical room IDs and update semantic search',()=>{
+ assert.match(roomById.udc.name,/Graduate Admissions/);assert.match(roomById['101'].name,/Undergraduate/);assert.match(roomById['102'].name,/Undergraduate/);
+ assert.ok(searchRooms('undergraduate development').some(r=>r.id==='102'));assert.ok(!searchRooms('graduate admissions').some(r=>r.id==='101'||r.id==='102'));
+ assert.equal(roomById['108'].name,'Feld Center · Office Suite 108');
+});
+
+test('four facing east lifts, connected auditorium foyer and separate projector cabin',()=>{
+ for(const [i,n]of ['181A','181B','181C','181D'].entries()){const r=roomById[i?`elevator-east-${i+1}`:'elevator-east'];assert.equal(r.number,n);assert.equal(r.doors[0].normal[1],i<2?1:-1);assert.equal(searchRooms(n)[0].id,r.id);}
+ for(const id of ['105A','105B','105D']){assert.equal(roomById[id].height,0);assert.match(roomById[id].name,/Entrance Foyer/);assert.ok(findRoute(id,'105'));}
+ assert.equal(roomById['105C'].name,'Auditorium Projector Cabin');assert.ok(findRoute('105A','105C'));
+ const route=findRoute('105D','105A');assert.ok(route.units<25);assert.ok(!route.points.some(p=>distance(p,roomById['105'].doors[0].point)<.001));
+ assert.equal(chairs.filter(c=>c.color==='auditorium').length,373);
+ for(const c of chairs.filter(c=>c.color==='auditorium')){assert.ok(pointInPolygon([c.x,c.z],roomById['105'].polygon));assert.ok(!pointInPolygon([c.x,c.z],stagePolygon));assert.ok(Math.sin(c.angle)>.9,'Seat backs must face east so the audience faces the west stage');}
+});
+
+test('atrium permits short traversals to stairs and lifts while clearing the sculpture',()=>{
+ const route=findRoute('main-entrance','stairs-main');assert.ok(route.units<75);
+ for(const id of ['stairs-main','elevator-east','elevator-east-3','elevator-east-4','stairs-east']){const r=findRoute('main-entrance',id);for(let i=1;i<r.points.length;i++)assert.ok(projectOnSegment(sculptureCenter,r.points[i-1],r.points[i]).distance>4.5,`${id} crosses sculpture`);}
+ assert.equal(roomById['198'].outdoor,true);assert.equal(roomById['198'].height,0);assert.match(roomById['198'].name,/Exterior Parking/);
 });

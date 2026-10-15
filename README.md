@@ -27,25 +27,34 @@ npm run preview # Preview the production build
 - Directory and category filters for learning spaces, centers, offices, amenities, and entrances.
 - Corridor-based Dijkstra routing between arbitrary mapped rooms, landmark instructions, origin/destination swap, and a same-location state.
 - Simulated blue-dot journeys with pause, resume, replay, and restart.
-- Location cards with descriptions, hours, seat count where verified, directions, clipboard sharing, and bookmarks stored on the device.
+- Location cards with descriptions, hours, schematic seat count, directions, clipboard sharing, and bookmarks stored on the device.
 - Deep links such as `?location=105`, responsive mobile directory, light/dark appearance, keyboard focus states, reduced-motion styles, accessible modal, and a 2D option when WebGL fails.
 - The 3D engine is loaded separately, keeping the initial application bundle smaller.
 
-## CAD revision — October 14, 2026
+## CAD revision — October 15, 2026
 
-This revision replaces the earlier public-overview geometry with eight manager-supplied CAD screenshots. Shared walls, room widths, and repeated features register the crops into a common drawing coordinate system. The screenshots themselves remain private working references and are not included in the app, public assets, or downloads. This is a manual tracing of raster screenshots, not an import of the original CAD vectors.
+This revision registers eleven manager-supplied CAD screenshots. The three latest close-ups clarify the auditorium, east elevator/stair core and exterior parking way. The screenshots remain private and are excluded from the app, repository and downloads. This is manual tracing of raster references, not an import of CAD vectors.
 
-There are 116 selectable spaces, 114 authored doorway portals, and 112 routable spaces. Office **101H is removed entirely** from the model, partitions, furniture, search, selectors, and routes. A saved bookmark or shared URL for the deleted room no longer resolves. Its former footprint is modeled as open circulation, per the user's correction; confirm the precise replacement layout on site. The old duplicate `101D-east` identifier is replaced by the CAD's single 101D, and 101I plus 102D/102E are included. CAD labels 110/112 and 115/140 are searchable circulation aliases rather than invented offices.
+There are **121 selectable spaces, 123 authored navigation portals and 118 routable spaces**. Office **101H remains excluded** from geometry, doors, furniture, labels, search, routes and saved links. Its former area remains open circulation. IDs refer to physical locations; the existing `udc` link now selects Graduate Admissions in the north wing, while 101/102 contain the relocated Undergraduate Development Center. Names, search and route instructions reflect this change.
 
-Door positions and widths follow the visible door symbols in the supplied screenshots. Enclosed office walls are split around the very same doorway data used by both renderers and the route graph. Routes pass from an approach point, through the door threshold, to an arrival point inside the destination. Interior suites connect to public corridors through their suite entrances. Multi-door suites choose among authored entrances. There is **no nearest-wall or nearest-corridor fallback**, and no straight line from a room center to an arbitrary corridor. Open entrances such as the 104F opening are explicitly modeled as open portals.
+- **Auditorium:** 105A, 105B and 105D are connected areas of the same entrance foyer, without invented dividing walls. Internal doors connect it to the auditorium. 105C is the enclosed projector cabin with its own door. The rebuilt shallow timber stage has a bowed front, paneled backdrop, lectern and side steps. Three seating banks face west toward the stage, with two clear cross aisles and perimeter circulation. The 373 modeled seats are schematic; they are not a verified seat-by-seat schedule or occupancy certificate.
+- **Feld / suite 108:** public entry goes through the main Feld Center doorway, then its internal corridor. Both public-facing suite 108 doors are modeled as exit only to enforce the user's Feld-only entry requirement. Each exit portal has outward-only graph edges. The internal suite junction stays bidirectional. Dijkstra respects those directions, so the return journey may be shorter. Existing bookmarks still use physical room IDs.
+- **Atrium:** open circulation crosses the atrium on either side of the sculpture. Routes to the main staircase and east lifts no longer depend on a perimeter-only graph. The sculpture clearance is tested.
+- **East core:** 181A/B face south and 181C/D face north into the shared 181K lobby. The adjacent east stairwell has opposed flights and a landing to the right of the lift bank. Lift doors have center-opening metal panels and call buttons.
+- **Entrances:** framed glazing, multiple door bays, pull handles, transoms, entrance mats and stone surrounds replace oversized door leaves. The main entrance has a Questrom fascia. Silber Way retains its CAD vestibule and a photo-informed material treatment.
+- **198:** an exterior asphalt parking passage with lane markings and a barrier, outside the indoor slab. It is selectable for identification but excluded from pedestrian routing.
 
-The model adds 373 schematic auditorium seats in sixteen fan-shaped rows, three seating banks and radial aisles; a curved stage and podium; office workstations, meeting tables, chairs, storage, stair treads, lift cabins, glazing, atrium café seating, and the sculpture landmark. Furniture follows the visible types and layout patterns, but its dimensions, seat spacing, elevations, materials and heights remain illustrative. The 373-seat capacity is retained from the earlier [Questrom Registrar reference](https://questromworld.bu.edu/qro/room-info/); the screenshot tracing does not independently verify a seating schedule.
+Door portals cut the same wall geometry used by the 2D and 3D renderers. The route graph passes through an authored approach, threshold and arrival point. Interior suites connect only through explicitly declared junctions. No nearest-wall or nearest-corridor fallback is used. Automated tests cover every navigation segment against every solid wall, destination connectivity, directed suite access, department search, lift orientation, auditorium seats and atrium clearance.
+
+### Architectural photo references
+
+The materials and proportions were informed by [BU's exterior entrance photograph](https://www.bu.edu/online/degrees-certificates/master-of-business-administration/online-mba/), [BU Today's lobby photograph](https://www.bu.edu/articles/2024/best-summer-study-spots-on-bu-campus/) and the [Questrom LocationsHub auditorium/gallery](https://rs.locationshub.com/Home/LocationDetail?rsLocationId=065-10242750). Photographs are references only and are not redistributed. The west-door close-up was not independently established; its footprint and door configuration follow the CAD, with finishes interpreted from the building photos. The roofless presentation intentionally keeps navigation visible.
 
 ### Geometry and routing limits
 
 - Coordinates are drawing units, using 20 registered image pixels per unit. They are **not surveyed meters**. Crops contain small alignment differences, resolved at shared doorway boundaries. No measurements or elevations were supplied.
 - Geometry is interpreted from the screenshots, not directly from the CAD file. Room ownership, current use, door locks, access restrictions, and circulation permissions require on-site verification. Some support-space names are deliberately generic.
-- Room 127, Service Passage 182A, Room 198 and cropped support space 105C are visible but have no confirmed complete doorway connection. They remain selectable, with an explanation and a disabled directions button. They are excluded from route endpoint selectors. Their incomplete geometry is indicative only.
+- Room 127 and Service Passage 182A lack a confirmed complete doorway connection and are not routable. Exterior Parking Way 198 is also excluded from pedestrian endpoints. All three remain selectable with an explanation and disabled directions. The new close-up establishes a door for projector cabin 105C, which is now connected.
 - The north wing is routed through the visible west-side corridor. An uncertain secondary connection around Room 114 is not manufactured to shorten routes.
 - Automated tests verify all authored approach segments against every solid wall, including suite entrance partitions, and check that each destination is entered via its portal. This proves consistency within the traced model, not real-world access or clearance certification.
 - Walking-time estimates retain the heuristic `ceil(route drawing units / 65)`, with a minimum of one minute. Calibrate only after a real building scale is confirmed.
@@ -64,6 +73,7 @@ src/
   components/
     MapView3D.jsx               Camera rig and 3D route
     CadModel.jsx                Door-cut walls and instanced CAD detail
+    ArchitecturalDetails.jsx    Entrance glazing, stage backdrop, lift doors, parking
     MapView2D.jsx               SVG blueprint and pointer gestures
     Searchbar.jsx               Accessible fuzzy-search combobox
     WayfindingPanel.jsx         Endpoint controls, instructions, simulation

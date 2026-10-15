@@ -7,9 +7,9 @@ export function buildNavigationGraph(){
  for(const d of doors.filter(d=>d.routable&&d.node)){
    let previous=d.node;
    for(const [i,p]of [...d.via,d.outside,d.point,d.inside].entries()){
-     const id=`${d.id}:${i}`;points[id]=p;edges.push([previous,id]);previous=id;
+     const id=`${d.id}:${i}`;points[id]=p;edges.push(d.exitOnly?[id,previous,true]:[previous,id]);previous=id;
    }
-   points[`${d.id}:inside`]=d.inside;edges.push([previous,`${d.id}:inside`]);
+   points[`${d.id}:inside`]=d.inside;edges.push(d.exitOnly?[`${d.id}:inside`,previous,true]:[previous,`${d.id}:inside`]);
  }
  const resolve=id=>roomById[id]?`${roomById[id].doors[0].id}:inside`:id;
  for(const[a,b]of interiorLinks)edges.push([resolve(a),resolve(b)]);
@@ -25,7 +25,7 @@ export function findRoute(startId,endId){
   for(const d of start.doors.filter(d=>d.routable))graph.edges.push(['start',`${d.id}:inside`]);
   for(const d of end.doors.filter(d=>d.routable))graph.edges.push([`${d.id}:inside`,'end']);
   const adjacency=Object.fromEntries(Object.keys(graph.points).map(k=>[k,[]]));
-  for(const [u,v] of graph.edges){const w=graph.points[u]&&graph.points[v]?distance(graph.points[u],graph.points[v]):0;adjacency[u].push([v,w]);adjacency[v].push([u,w]);}
+  for(const [u,v,directed] of graph.edges){const w=graph.points[u]&&graph.points[v]?distance(graph.points[u],graph.points[v]):0;adjacency[u].push([v,w]);if(!directed)adjacency[v].push([u,w]);}
   const costs={start:0},previous={},unvisited=new Set(Object.keys(adjacency));
   while(unvisited.size){
     const u=[...unvisited].reduce((a,b)=>(costs[a]??Infinity)<=(costs[b]??Infinity)?a:b);
@@ -43,10 +43,11 @@ export function findRoute(startId,endId){
     const [p,q,r]=[points[i-1],points[i],points[i+1]],cross=(q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0]);
     if(Math.abs(cross)<.15||Math.min(distance(p,q),distance(q,r))<1.5)continue;
     const landmark=Object.entries(corridorNodes).filter(([k])=>['atriumSouth','atriumNorth','audEast','audSouth','feldEntry','westLobby','northHall','gradEntry'].includes(k)).sort((a,b)=>distance(a[1],q)-distance(b[1],q))[0];
-    const labels={atriumSouth:'the Chiles Atrium',atriumNorth:'the main staircase',audEast:'Auditorium 105',audSouth:'Auditorium 105',feldEntry:'the Feld Center',westLobby:'the west lobby',northHall:'the undergraduate offices',gradEntry:'Graduate Admissions'};
+    const labels={atriumSouth:'the Chiles Atrium',atriumNorth:'the main staircase',audEast:'Auditorium 105',audSouth:'Auditorium 105',feldEntry:'the Feld Center',westLobby:'the west lobby',northHall:'Graduate Admissions',gradEntry:'the undergraduate offices'};
     steps.push({text:`Turn ${cross>0?'right':'left'}${landmark&&distance(landmark[1],q)<13?' near '+labels[landmark[0]]:''} and continue along the corridor.`,kind:cross>0?'right':'left',point:q});
   }
-  steps.push({text:`Enter ${end.short||end.name} through its ${end.doors[0].kind==='open'?'open entrance':'marked doorway'}${end.number?' · '+end.number:''}.`,kind:'arrive',point:points.at(-1)});
+  if(end.suite==='108'||endId==='108')steps.push({text:'Access suite 108 through the main Feld Center entrance. Exterior suite doors are exit only.',kind:'info'});
+  steps.push({text:`Enter ${end.short||end.name} through its ${endDoor.kind==='open'?'open entrance':'marked doorway'}${end.number?' · '+end.number:''}.`,kind:'arrive',point:points.at(-1)});
   return {points,units:costs.end,minutes:Math.max(1,Math.ceil(costs.end/65)),steps,startDoor:startDoor.id,endDoor:endDoor.id};
 }
 export function pointAlong(points,progress){
