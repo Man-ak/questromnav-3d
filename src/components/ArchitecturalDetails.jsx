@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
+import { RoundedBox } from '@react-three/drei';
+import { undergraduateCounterParts, lounge115Sofa } from '../data/northWingLayout';
 import { receptionSegments, susiloShelf } from '../data/susiloLayout';
-import { cadPoint as P, roomById, doors } from '../data/questromMapData';
+import { cadPoint as P, roomById, doors, windows } from '../data/questromMapData';
 
 function Block({at,size,color='#d9d0bb',glass=false,rotation=0}){
  return <mesh position={at} rotation={[0,rotation,0]} castShadow={!glass} receiveShadow><boxGeometry args={size}/><meshStandardMaterial color={color} roughness={glass?.2:.75} metalness={glass?.25:.1} transparent={glass} opacity={glass?.28:1} depthWrite={!glass}/></mesh>;
@@ -125,4 +127,28 @@ function LoadingDock(){return <group>{roomById['188'].doors.map(d=>{
  </group>;
 })}</group>;}
 
-export default function ArchitecturalDetails(){return <><Entrance/><Entrance west/><Auditorium/><LobbyDetails/><Parking/><LiftDoors/><SusiloInterior/><LoadingDock/></>;}
+function NorthWingDetails(){
+ const sofa=lounge115Sofa,[sx,sz]=sofa.center,[deskX,deskZ]=P(14,523,480),[screenX,screenZ]=P(14,506,475);
+ return <group>
+  {undergraduateCounterParts.map((c,i)=><group key={i}>
+   <Block at={[c.center[0],.8,c.center[1]]} size={[c.w,1.1,c.d]} color="#b49774"/>
+   <Block at={[c.center[0],1.42,c.center[1]]} size={[c.w+.08,.14,c.d+.08]} color="#eee7d8"/>
+  </group>)}
+  <Sign at={[deskX+.06,.98,deskZ]} size={[3,.53]} text="UNDERGRADUATE RECEPTION" rotation={Math.PI/2} color="#f7edda" background="#a67d59"/>
+  <Block at={[screenX,1.7,screenZ]} size={[.12,.4,.1]} color="#54605b"/>
+  <Block at={[screenX,2.02,screenZ]} size={[.1,.65,1.1]} color="#3c4743"/>
+  <group position={[sx,0,sz]} rotation={[0,sofa.rotation,0]}>
+   <RoundedBox args={[3.4,.3,1.5]} radius={.1} smoothness={3} position={[0,.5,0]}><meshStandardMaterial color="#8b6553"/></RoundedBox>
+   {[-1,0,1].map(i=><RoundedBox key={i} args={[.99,.28,1.17]} radius={.09} smoothness={3} position={[i*1.03,.76,-.05]}><meshStandardMaterial color="#bb6c5b"/></RoundedBox>)}
+   <RoundedBox args={[3.3,.82,.32]} radius={.12} smoothness={3} position={[0,1.23,.6]}><meshStandardMaterial color="#b35f51"/></RoundedBox>
+   {[-1,1].map(side=><RoundedBox key={side} args={[.24,.6,1.4]} radius={.08} smoothness={3} position={[side*1.62,1.01,0]}><meshStandardMaterial color="#ae5a4e"/></RoundedBox>)}
+  </group>
+  {windows.map(w=>{const dx=w.b[0]-w.a[0],dz=w.b[1]-w.a[1],angle=-Math.atan2(dz,dx),count=Math.max(2,Math.ceil(w.width/2)+1);return <group key={w.id} position={[w.point[0],0,w.point[1]]} rotation={[0,angle,0]}>
+   <Block at={[0,1.82,0]} size={[w.width,1.88,.07]} color="#97bec1" glass/>
+   <Block at={[0,2.88,0]} size={[w.width,.12,.18]} color="#c6c7b9"/>
+   {Array.from({length:count},(_,i)=><Block key={i} at={[-w.width/2+i*w.width/(count-1),1.84,0]} size={[.055,2.05,.13]} color="#a5aaa0"/>)}
+  </group>;})}
+ </group>;
+}
+
+export default function ArchitecturalDetails(){return <><Entrance/><Entrance west/><Auditorium/><LobbyDetails/><Parking/><LiftDoors/><SusiloInterior/><LoadingDock/><NorthWingDetails/></>;}

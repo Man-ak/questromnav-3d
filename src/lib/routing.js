@@ -43,7 +43,11 @@ export function findRoute(startId,endId){
   const points=raw;
   const steps=[{text:`Start at ${start.short||start.name}.`,kind:'start',point:points[0]}];
   for(let i=1;i<points.length-1;i++){
-    const [p,q,r]=[points[i-1],points[i],points[i+1]],cross=(q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0]);
+    const q=points[i],next=points[i+1],northGate=roomById.udc.doors[1],westExit=roomById.udc.doors[0],womenEntrance=roomById['restroom-w-vestibule'].doors[0];
+    if(same(q,northGate.point)&&next[0]<q[0])steps.push({text:'Go through the double doors in passage 113 into area 115.',kind:'enter',point:q});
+    if(same(q,westExit.point)&&next[1]>q[1])steps.push({text:'Leave area 115 through the exit-only west door between 135 and 138.',kind:'exit',point:q});
+    if(endId==='restroom-w'&&same(q,womenEntrance.point)&&next[0]<q[0])steps.push({text:'Go through the first door into the women’s restroom vestibule; continue to the inner door.',kind:'enter',point:q});
+    const [p,,r]=[points[i-1],points[i],points[i+1]],cross=(q[0]-p[0])*(r[1]-q[1])-(q[1]-p[1])*(r[0]-q[0]);
     if(Math.abs(cross)<.15||Math.min(distance(p,q),distance(q,r))<1.5)continue;
     const landmark=Object.entries(corridorNodes).filter(([k])=>['atriumSouth','atriumNorth','audEast','audSouth','feldEntry','westLobby','northHall','gradEntry'].includes(k)).sort((a,b)=>distance(a[1],q)-distance(b[1],q))[0];
     const labels={atriumSouth:'the Chiles Atrium',atriumNorth:'the main staircase',audEast:'Auditorium 105',audSouth:'Auditorium 105',feldEntry:'the Feld Center',westLobby:'the west lobby',northHall:'the undergraduate offices',gradEntry:'Graduate Admissions'};

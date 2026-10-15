@@ -1,12 +1,14 @@
-import { polygonBounds, splitWall } from '../lib/geometry.js';
+import { polygonBounds, splitWall, projectOnSegment } from '../lib/geometry.js';
 /** CAD screenshots supplied October 14–15, 2026. Offsets register overlapping walls.
  * Units are drawing units, not meters. Heights are illustrative. 101H is removed.
  * Original screenshots are private working references and are not shipped.
  */
 export const mapSource='https://questromapps.bu.edu/maps/images/1new.png';
-export const mapRevision={date:'2026-10-15',source:'Thirteen user-supplied CAD screenshots',scale:'20 registered pixels per drawing unit',omitted:['101H'],heightVerified:false};
-const offsets={0:[0,0],1:[2014,47],2:[1968,991],3:[868,979],4:[-49,983],5:[0,416],6:[0,0],7:[1175,34],8:[1653,77],9:[550,440],10:[2028,612]};
-export const cadPoint=(image,x,z)=>[(x*(image===9?1.48:image===10?1.5:1)+offsets[image][0]-224)/20,(z*(image===9?1.48:image===10?1.5:1)+offsets[image][1]-105)/20];
+export const mapRevision={date:'2026-10-15',source:'Fourteen user-supplied CAD screenshots',scale:'20 registered pixels per drawing unit',omitted:['101H'],heightVerified:false};
+const offsets={0:[0,0],1:[2014,47],2:[1968,991],3:[868,979],4:[-49,983],5:[0,416],6:[0,0],7:[1175,34],8:[1653,77],9:[550,440],10:[2028,612],14:[1177,44.5]};
+const imageScales={9:1.48,10:1.5,14:.75};
+const scaleOf=image=>imageScales[image]||1;
+export const cadPoint=(image,x,z)=>[(x*scaleOf(image)+offsets[image][0]-224)/20,(z*scaleOf(image)+offsets[image][1]-105)/20];
 const P=cadPoint,R=(x,z,w,d)=>[[x,z],[x+w,z],[x+w,z+d],[x,z+d]];
 export const categories={academic:{label:'Learning spaces',color:'#b9cfcc',ink:'#3c6660'},center:{label:'Student centers',color:'#b9c9a7',ink:'#527046'},office:{label:'Offices',color:'#e0cbb5',ink:'#8a6946'},amenity:{label:'Amenities',color:'#c0cfdf',ink:'#52708e'},entrance:{label:'Entrances',color:'#d9dfd6',ink:'#617458'}};
 export const footprint=[[0,0],[181.5,0],[181.5,28],[163,28],[163,81],[149,81],[149,78],[115,78],[115,82],[89,82],[89,79],[0,79],[0,41],[-5,41],[-5,28],[0,28]];
@@ -14,18 +16,21 @@ export const rooms=[];
 const door=(x,z,nx,nz,node,width=40,extra={})=>({x,z,normal:[nx,nz],node,width,...extra});
 function add(id,type,image,polygon,specs=[],meta={}){
  const shape=polygon.map(p=>P(image,...p)),b=polygonBounds(shape),room={id,type,number:/^\d/.test(id)?id:'',floor:1,name:/^\d/.test(id)?`Office ${id}`:id,polygon:shape,center:[(b.minX+b.maxX)/2,(b.minZ+b.maxZ)/2],height:2.8,label:[id],description:'A first-floor space traced from the supplied CAD close-ups.',hours:'Hours vary · confirm with the department',verified:'Door position traced from supplied CAD screenshots',sourceImage:image,...meta};
- room.doors=specs.map((d,i)=>{const point=P(image,d.x,d.z),normal=d.normal;return{id:`${id}:door${i+1}`,roomId:id,point,normal,width:d.width*(image===9?1.48:image===10?1.5:1)/20,node:d.node,kind:d.kind||'single',inside:d.inside?P(image,...d.inside):[point[0]-normal[0]*1.05,point[1]-normal[1]*1.05],outside:[point[0]+normal[0]*1.1,point[1]+normal[1]*1.1],via:(d.via||[]).map(p=>P(image,...p)),exitOnly:!!d.exitOnly,storefront:!!d.storefront,routable:d.routable!==false};});
+ room.doors=specs.map((d,i)=>{const point=P(image,d.x,d.z),normal=d.normal;return{id:`${id}:door${i+1}`,roomId:id,point,normal,width:d.width*scaleOf(image)/20,node:d.node,kind:d.kind||'single',inside:d.inside?P(image,...d.inside):[point[0]-normal[0]*1.05,point[1]-normal[1]*1.05],outside:[point[0]+normal[0]*1.1,point[1]+normal[1]*1.1],via:(d.via||[]).map(p=>P(image,...p)),render:d.render!==false,exitOnly:!!d.exitOnly,storefront:!!d.storefront,routable:d.routable!==false};});
  room.door=room.doors[0]?.point||room.center;room.routable=room.doors.some(d=>d.node&&d.routable);if(!room.routable&&!room.routeNote)room.routeNote='The supplied crops do not establish a complete door connection for this space. Confirm it before routing.';rooms.push(room);return room;
 }
 const box=(id,type,image,x,z,w,d,specs,meta)=>add(id,type,image,R(x,z,w,d),specs,meta);
 // North wing: traced widths and alternating doorway positions.
 for(const[id,l,r,dx]of [['136',261,337,315],['134',344,424,364],['132',431,508,486],['130',516,594,536],['128',603,681,660],['126',688,774,752],['124B',781,861,802],['124A',868,949,927],['122',957,1090,1067],['120',1098,1192,1119],['118',1199,1310,1288],['116',1318,1431,1339],['115B',1439,1533,1511]])box(id,'office',6,l,139,r-l,137,[door(dx,276,0,1,'northHall')],{furniture:'none'});
-for(const[id,x,z,w,d,dx,dz,nx,nz]of [['133',478,346,115,89,570,346,0,-1],['129A',600,368,120,68,701,368,0,-1],['135',478,442,115,85,493,527,0,1],['129',600,442,173,85,751,527,0,1],['125A',779,346,65,132,800,346,0,-1],['123',854,345,116,133,874,345,0,-1],['121',977,345,114,133,1070,345,0,-1],['119',1104,345,105,133,1124,345,0,-1],['119A',1216,345,101,133,1295,345,0,-1],['117',1325,378,114,100,1346,378,0,-1],['115A',1471,346,101,132,1492,346,0,-1],['140A',240,367,171,89,411,434,1,0],['138',240,465,171,128,411,489,1,0]])box(id,'office',6,x,z,w,d,[door(dx,dz,nx,nz,['135','129'].includes(id)?'northLower':['138','140A'].includes(id)?'northWest':'northHall')],{furniture:'none'});
+for(const[id,x,z,w,d,dx,dz,nx,nz]of [['133',478,346,115,89,570,346,0,-1],['129A',600,368,120,68,701,368,0,-1],['135',478,442,115,85,493,527,0,1],['129',600,442,173,85,751,527,0,1],['125A',779,346,65,132,800,346,0,-1],['123',854,345,116,133,874,345,0,-1],['121',977,345,114,133,1070,345,0,-1],['119',1104,345,105,133,1124,345,0,-1],['119A',1216,345,101,133,1295,345,0,-1],['117',1325,378,114,100,1346,378,0,-1],['140A',240,367,171,89,411,434,1,0],['138',240,465,171,128,411,489,1,0]])box(id,'office',6,x,z,w,d,[door(dx,dz,nx,nz,['135','129'].includes(id)?'northLower':['138','140A'].includes(id)?'northWest':'northHall')],{furniture:'none'});
 box('117A','office',6,1325,346,57,26,[door(1354,346,0,-1,'northHall',32)],{furniture:'none'});
 box('127','office',6,780,487,64,40,[],{name:'Room 127',furniture:'none'});
-add('114','academic',7,[[509,106],[848,106],[848,303],[814,303],[814,339],[597,339],[597,303],[509,303]],[door(535,303,0,1,'udcEast'),door(829,303,0,1,null,42,{routable:false})],{name:'Gaffey Conference Room',label:['GAFFEY CONFERENCE','114'],furniture:'conference',description:'Gaffey Conference Room with its recessed front window and two visible doors. The second doorway is shown but its onward corridor connection remains unconfirmed.'});
-box('113','office',7,628,346,219,77,[door(628,384,-1,0,'udcEast',65,{kind:'double'})],{furniture:'none'});
-add('udc','center',6,[[420,280],[1659,280],[1659,340],[1590,340],[1590,477],[851,477],[851,338],[770,338],[770,358],[596,358],[596,338],[471,338],[471,527],[420,527]],[door(440,527,0,1,'northWest',42,{kind:'open'})],{name:'Undergraduate Development Center',short:'Undergraduate Center',number:'115',label:['UNDERGRADUATE CENTER','115 · 140'],height:0,featured:true,aliases:['140','undergraduate development','undergrad','advising'],description:'Undergraduate Development Center in the north wing, rooms 115–140.',center:P(6,1598,414)});
+// Latest close-up: conference glazing, open 113 passage and the 115 lounge.
+add('114','academic',14,[[675,126],[1135,126],[1135,397],[1078,397],[1078,442],[789,442],[789,397],[675,397]],[door(705,397,0,1,'conferenceWestApproach',55),door(1107,397,0,1,'conferenceEastApproach',50)],{name:'Gaffey Conference Room',label:['GAFFEY CONFERENCE','114'],furniture:'conference',center:P(14,905,260),description:'Conference space with two working entrances: one from area 115 and one from passage 113. The central frontage is glazing, not an entrance.'});
+add('113','entrance',14,[[830,452],[1078,452],[1078,397],[1138,397],[1138,448],[1318,448],[1318,610],[1160,610],[1160,557],[830,557]],[door(830,503,-1,0,'udcEast',70,{kind:'double'}),door(1240,610,0,1,'passage113Approach',140,{kind:'open'})],{name:'Passage 113',number:'113',label:['PASSAGE','113'],height:0,furniture:'none',center:P(14,1020,503),aliases:['corridor','undergraduate entrance'],description:'Passage from the atrium into area 115. Use the double doors to reach the Undergraduate lounge, reception and north-wing rooms.'});
+add('udc','center',6,[[420,280],[1537,280],[1537,139],[1683.25,139],[1683.25,342.25],[1768.75,342.25],[1768.75,376],[1799.5,376],[1799.5,482],[851,477],[851,338],[770,338],[770,358],[596,358],[596,338],[471,338],[471,527],[420,527]],[door(440,527,0,1,'udcWestOutside',42,{exitOnly:true}),door(1799.5,421.75,1,0,'passage113Inner',52.5,{kind:'double',render:false})],{name:'Undergraduate Development Center',short:'Undergraduate Center',number:'115–140',label:['UNDERGRADUATE CENTER'],height:0,featured:true,aliases:['140','undergraduate development','undergrad','advising'],accessNote:'Enter through passage 113. The west door between 135 and 138 is exit only.',description:'Undergraduate Development Center, reached through passage 113 beside conference room 114.',center:P(14,550,330)});
+box('115','center',14,480,126,195,271,[door(480,350,-1,0,'lounge115Approach',64,{kind:'open',render:false})],{name:'Undergraduate Lounge',short:'Lounge 115',number:'115',label:['LOUNGE','115'],height:0,furniture:'lounge115',department:'Undergraduate Development Center',description:'Couch and waiting area beside Undergraduate reception 115A. Furniture is shown schematically.',center:P(14,575,230)});
+box('115A','center',14,389,396,190,187,[door(579,480,1,0,'reception115Approach',60,{kind:'open',render:false})],{name:'Undergraduate Reception Desk',short:'Reception 115A',number:'115A',label:['RECEPTION','115A'],height:0,furniture:'reception115',department:'Undergraduate Development Center',center:P(14,450,470),description:'Reception desk serving Undergraduate Development Center. Directions stop on the public side of the counter.'});
 // West lobby and the 108 suite, with two separate suite approaches.
 box('silber-entrance','entrance',5,124,260,139,230,[door(263,376,1,0,'westLobby',150,{kind:'double',storefront:true})],{number:'197',name:'Silber Way Entrance',label:['SILBER WAY','197'],height:0,aliases:['exit','side door']});
 box('west-lobby','entrance',5,275,202,311,335,[door(440,537,0,1,'westLobby',100,{kind:'open'})],{name:'West Lobby',number:'193',label:['WEST LOBBY','193'],height:0});
@@ -48,9 +53,10 @@ for(const[id,x,z,w,d,dx,dz,nx,nz]of [['102A',1016,435,108,133,1095,435,0,-1],['1
 box('182A','amenity',2,1494,374,59,193,[],{name:'Service Passage 182A',label:['182A'],furniture:'none'});
 box('198','amenity',10,974,40,221,635,[],{name:'Exterior Parking Way',number:'198',label:['PARKING WAY','198 · OUTDOORS'],outdoor:true,height:0,color:'#777e80',description:'Exterior vehicle passage alongside the building, not an indoor room.',routeNote:'Vehicle passage outside the building. Choose Main Entrance or Silber Way Entrance for pedestrian directions.',furniture:'parking'});
 // Atrium, business center, east lifts and stair cores.
-add('150','office',1,[[25,253],[281,253],[281,452],[155,452],[155,333],[25,333]],[door(260,452,0,1,'atriumNorth')],{furniture:'none'});
-box('150A','office',1,289,291,87,163,[door(376,399,1,0,'atriumNorth')],{furniture:'none'});
-add('restroom-w','amenity',1,[[24,96],[389,96],[389,174],[297,174],[297,227],[24,227]],[door(389,151,1,0,'northRestroom')],{number:'189',name:'Women’s Restroom',label:['WOMEN','189'],aliases:['bathroom','toilet','women','189'],furniture:'restroom'});
+add('150','office',14,[[1147,343],[1485,343],[1485,610],[1318,610],[1318,448],[1147,448]],[door(1457,610,0,1,'officeHours150Approach',50)],{name:'Office Hours & Question Sessions',short:'Office Hours · 150',label:['OFFICE HOURS','150'],furniture:'office-hours',center:P(14,1385,510),aliases:['doubt sessions','questions','tutoring'],description:'Space allocated for office hours and question sessions. Meeting furniture is schematic.'});
+add('150A','office',14,[[1494,397],[1630,397],[1630,516],[1617,516],[1617,566],[1630,566],[1630,610],[1494,610]],[door(1617,541,1,0,'northRestroom',48,{via:[[1690,541]]})],{furniture:'none'});
+add('restroom-w','amenity',14,[[1147,132],[1629,132],[1629,234],[1509,234],[1509,310],[1147,310]],[door(1592,234,0,1,'womenVestibule',50)],{number:'189',name:'Women’s Restroom',label:['WOMEN','189'],aliases:['bathroom','toilet','women','189'],furniture:'restroom',center:P(14,1390,200),description:'Women’s restroom reached through two successive doors and an entrance vestibule.'});
+box('restroom-w-vestibule','amenity',14,1509,234,121,142,[door(1630,301,1,0,'northRestroom',50)],{name:'Women’s Restroom Entrance',number:'189 entrance',label:['189','ENTRANCE'],furniture:'none',description:'Entrance vestibule between the two doors of women’s restroom 189.'});
 add('restroom-m','amenity',1,[[741,196],[998,196],[998,344],[828,344],[828,443],[741,443]],[door(741,395,-1,0,'eastRestroom')],{number:'187',name:'Men’s Restroom',label:['MEN','187'],aliases:['bathroom','toilet','men','187'],center:P(1,868,267),furniture:'restroom'});
 box('187B','amenity',1,833,351,174,93,[door(833,396,-1,0,'menVestibule',36),door(1007,395,1,0,null,40,{routable:false})],{name:'Service Room 187B',label:['187B'],furniture:'none',description:'Public map grouping for room 187B. Existing internal partitions and doorways are retained.'});
 add('susilo','center',1,[[1092,96],[1266,96],[1266,301],[1299,301],[1299,444],[1177,444],[1177,455],[1092,455],[1092,444],[1007,444],[1007,351],[1092,351]],[door(1138,455,0,1,'businessEntry',70,{kind:'double'})],{number:'186',name:'Susilo Business Center',short:'Susilo Business Center',label:['SUSILO BUSINESS','CENTER · 186'],center:P(1,1180,265),featured:true,hours:'Monday–Friday · 9:00 AM–5:00 PM',hoursSource:'https://questromworld.bu.edu/susilobusinesscenter/',furniture:'business',description:'Course packets, copying, and lost-and-found services. A basic CAD-based reception layout is shown; detailed furnishings and finishes await on-site photographs.'});
@@ -84,8 +90,8 @@ add('105C','amenity',9,[[912,215],[953,215],[953,330],[912,330],[912,283],[890,2
 export const roomById=Object.fromEntries(rooms.map(r=>[r.id,r])),featuredIds=['105','udc','susilo','104','101'],doors=rooms.flatMap(r=>r.doors);
 export const corridorNodes={},corridorEdges=[];
 const node=(id,image,x,z)=>corridorNodes[id]=P(image,x,z),link=(...ids)=>{for(let i=1;i<ids.length;i++)corridorEdges.push([ids[i-1],ids[i]]);};
-node('northHall',6,900,310);node('northWest',6,441,565);node('northCorner',6,441,310);node('northLower',6,737,548);node('northLowerTurn',6,441,548);node('udcEast',6,1745,389);node('udcTurn',6,1606,310);node('udcSouth',6,1606,389);link('northWest','northLowerTurn','northCorner','northHall','udcTurn','udcSouth','udcEast');link('northLowerTurn','northLower');
-node('westLobbyUpper',5,760,190);node('westLobby',5,470,375);node('westLobbyLower',5,465,569);node('westLift',5,983,430);node('westLiftSouth',5,983,725);node('westLobbyCross',5,795,375);node('westUpperLeft',5,470,190);link('northWest','westUpperLeft','westLobby','westLobbyLower');link('westUpperLeft','westLobbyUpper','westLobbyCross','westLobby');link('westLobbyCross','westLift','westLiftSouth');
+node('northHall',6,900,310);node('northWest',6,441,506);node('udcWestOutside',6,441,565);node('northCorner',6,441,310);node('northLower',6,737,548);node('northLowerTurn',6,441,548);node('udcEast',6,1745,389);node('udcTurn',6,1606,310);node('udcSouth',6,1606,389);link('udcWestOutside','northLowerTurn');link('northWest','northCorner','northHall','udcTurn','udcSouth','udcEast');link('northLowerTurn','northLower');
+node('westLobbyUpper',5,760,190);node('westLobby',5,470,375);node('westLobbyLower',5,465,569);node('westLift',5,983,430);node('westLiftSouth',5,983,725);node('westLobbyCross',5,795,375);node('westUpperLeft',5,470,190);link('udcWestOutside','westUpperLeft','westLobby','westLobbyLower');link('westUpperLeft','westLobbyUpper','westLobbyCross','westLobby');link('westLobbyCross','westLift','westLiftSouth');
 node('suite108Upper',4,483,80);node('suite108West',4,483,290);node('suite108',4,1040,290);node('southWest',0,991,1170);node('southMiddle',0,1480,1170);node('audSouth',0,1700,1170);node('southEast',0,2120,1170);link('westLobbyLower','suite108Upper','suite108West','suite108','southWest','southMiddle','audSouth','southEast');link('westLiftSouth','southWest');
 node('feldEntry',3,1395,192);node('feldFoyer',3,1378,413);node('feldHall',3,800,413);link('southEast','feldEntry');
 node('atriumSouth',0,2568,1270);node('atriumWest',0,2120,1000);node('audEast',0,2120,650);node('atriumNorth',1,440,500);node('northRestroom',1,440,180);node('eastRestroom',1,704,500);node('businessEntry',1,1138,495);node('eastGalleryEntry',1,1260,500);link('atriumSouth','southEast','atriumWest','audEast','atriumNorth','eastRestroom','businessEntry','eastGalleryEntry');link('atriumNorth','northRestroom');
@@ -114,7 +120,15 @@ interiorLinks.splice(interiorLinks.findIndex(([a,b])=>a==='audAisleWest'&&b==='a
 for(const r of rooms)for(const d of r.doors)if(['northHall','northLower','northWest','feldHall','suite108','admissionsHall','gradUpper','gradLower'].includes(d.node)){const source=corridorNodes[d.node];d.via=d.normal[0]?[[source[0],d.outside[1]]]:[[d.outside[0],source[1]]];}
 for(const id of ['108K','108J','108I','108L']){const d=roomById[id].doors[0];d.node='suite108West';d.via=[[corridorNodes.suite108West[0],d.outside[1]]];}
 for(const id of ['101E','101F','101G']){const d=roomById[id].doors[0];d.via=[[d.outside[0],corridorNodes.gradLower[1]]];}
-roomById['114'].doors[0].via=[P(6,1745,358),P(7,535,325)];
+
+
+// The west 115 door is outward-only; all incoming north-wing routes use 113.
+node('passage113Approach',14,1240,650);node('passage113Turn',14,1240,503);node('passage113Inner',14,950,503);
+node('conferenceEastApproach',14,1107,475);node('conferenceWestApproach',14,705,475);
+node('lounge115Approach',14,440,350);node('reception115Approach',14,620,480);
+node('officeHours150Approach',14,1457,650);node('northRestroom',14,1690,301);node('womenVestibule',14,1580,301);
+link('udcEast','conferenceWestApproach');link('udcTurn','lounge115Approach');link('udcSouth','reception115Approach');
+interiorLinks.push(['udc:door1:inside','northWest'],['udc:door2:inside','udcEast'],['113:door1:inside','passage113Inner'],['113:door2:inside','passage113Turn'],['passage113Turn','passage113Inner'],['passage113Inner','conferenceEastApproach'],['restroom-w-vestibule','womenVestibule']);
 
 // October 15 circulation corrections. Exit-only ports are directed in routing.js.
 const disconnect=(a,b)=>{for(const list of [corridorEdges,interiorLinks])for(let i=list.length-1;i>=0;i--)if((list[i][0]===a&&list[i][1]===b)||(list[i][0]===b&&list[i][1]===a))list.splice(i,1);};
@@ -158,7 +172,7 @@ function joinHall(key,base,doorNodes,axis){
 joinHall('feld',['feldHall','feldFoyer'],['feldHall'],0);
 joinHall('north',['northCorner','northHall','udcTurn'],['northHall'],0);
 joinHall('northLower',['northLowerTurn','northLower'],['northLower'],0);
-joinHall('northWest',['northCorner','northLowerTurn','northWest'],['northWest'],1);
+joinHall('northWest',['northCorner','northWest'],['northWest'],1);
 joinHall('108',['suite108West','suite108'],['suite108'],0);
 joinHall('108west',['suite108Upper','suite108West'],['suite108West'],1);
 joinHall('admissions',['admissionsReception','admissionsHall','gradAcross'],['admissionsHall'],0);
@@ -166,7 +180,12 @@ joinHall('gradVertical',['gradUpper','gradHall','gradLower'],['gradUpper','gradH
 joinHall('gradLower',['gradLowerWest','gradLower'],['gradLower'],0);
 for(const r of rooms)r.door=r.doors[0]?.point||r.center;
 const partition=(image,a,b)=>({a:P(image,...a),b:P(image,...b),height:2.8});
-export const extraPartitions=[partition(3,[1334,222],[1514,222]),partition(3,[1514,222],[1514,445]),partition(2,[774,214],[1044,214]),partition(2,[1291,214],[1291,347]),partition(4,[459,70],[514,70]),partition(9,[850,25],[1010,25]),partition(9,[1010,25],[1010,455]),partition(9,[850,455],[1010,455]),partition(1,[881.5,351],[881.5,444])];
+export const extraPartitions=[partition(3,[1334,222],[1514,222]),partition(3,[1514,222],[1514,445]),partition(2,[774,214],[1044,214]),partition(2,[1291,214],[1291,347]),partition(4,[459,70],[514,70]),partition(9,[850,25],[1010,25]),partition(9,[1010,25],[1010,455]),partition(9,[850,455],[1010,455]),partition(1,[881.5,351],[881.5,444]),partition(14,[830,452],[830,557]),partition(14,[830,557],[1138,557]),partition(6,[420,527],[471,527])];
+// Windows lower the rendered wall to a sill, but remain solid route barriers.
+export const windows=[['conference-114',14,[862,442],[1025,442]],['office-hours-150',14,[1318,458],[1318,565]],['office-150A',14,[1500,610],[1535,610]]].map(([id,image,a,b])=>{const start=P(image,...a),end=P(image,...b),dx=end[0]-start[0],dz=end[1]-start[1],width=Math.hypot(dx,dz);return{id,a:start,b:end,point:[(start[0]+end[0])/2,(start[1]+end[1])/2],normal:[-dz/width,dx/width],width,sillHeight:.65,height:2.8};});
 const walls=rooms.filter(r=>r.height>.3).flatMap(r=>r.polygon.map((a,i)=>({a,b:r.polygon[(i+1)%r.polygon.length],height:r.height,roomId:r.id}))),seenWalls=new Set();
-export const wallSegments=[...walls,...extraPartitions].flatMap(w=>splitWall(w.a,w.b,doors).map(segment=>({...w,...segment}))).filter(w=>{const key=[w.a,w.b].map(p=>p.map(n=>n.toFixed(2)).join(',')).sort().join('|');if(seenWalls.has(key))return false;seenWalls.add(key);return true;});
+export const wallSegments=[...walls,...extraPartitions].flatMap(w=>splitWall(w.a,w.b,doors).map(segment=>({...w,...segment}))).flatMap(w=>{
+ const glass=windows.filter(g=>projectOnSegment(g.a,w.a,w.b).distance<.01&&projectOnSegment(g.b,w.a,w.b).distance<.01);
+ return glass.length?[...splitWall(w.a,w.b,glass).map(segment=>({...w,...segment})),...glass.map(g=>({...w,a:g.a,b:g.b,height:g.sillHeight,windowId:g.id}))]:[w];
+}).filter(w=>{const key=[w.a,w.b].map(p=>p.map(n=>n.toFixed(2)).join(',')).sort().join('|');if(seenWalls.has(key))return false;seenWalls.add(key);return true;});
 export const sculptureCenter=P(10,355,158),sceneCenter=[90.5,40];

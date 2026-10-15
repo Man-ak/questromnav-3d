@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { categories, footprint, rooms, roomById, wallSegments, doors, sculptureCenter } from '../data/questromMapData';
+import { categories, footprint, rooms, roomById, wallSegments, doors, sculptureCenter, windows } from '../data/questromMapData';
 import { pointAlong } from '../lib/routing';
 import { useMapStore } from '../store/useMapStore';
 import { atriumSeats, atriumTables, atriumRugs, sculptureRadius } from '../data/atriumLayout';
 import { receptionFootprint } from '../data/susiloLayout';
+import { undergraduateCounter, lounge115Sofa } from '../data/northWingLayout';
 import { chairs, stagePolygon } from '../data/furniture';
 export default function MapView2D(){
   const svg=useRef(),pointers=useRef(new Map()),gesture=useRef(null);const [view,setView]=useState({x:-10,z:-10,w:202,h:110});
@@ -26,12 +27,17 @@ export default function MapView2D(){
       {atriumSeats.map((c,i)=><rect className="atrium-seat" key={i} x={c.x-.44} y={c.z-.43} width=".88" height=".86" rx=".18" transform={`rotate(${-c.angle*180/Math.PI} ${c.x} ${c.z})`} fill={c.tone==='scarlet'?'#b9584b':'#caba9b'}/>)}
       <polygon className="susilo-counter" points={receptionFootprint.map(p=>p.join(',')).join(' ')} fill="#b2916b" stroke="#f3ead7" strokeWidth=".13"/>
     </g>
+    <g pointerEvents="none">
+      <polygon className="undergraduate-counter" points={undergraduateCounter.map(p=>p.join(',')).join(' ')} fill="#b49774" stroke="#f3ead7" strokeWidth=".13"/>
+      <rect className="lounge115-sofa" x={lounge115Sofa.center[0]-.75} y={lounge115Sofa.center[1]-1.7} width="1.5" height="3.4" rx=".23" fill="#b76353"/>
+    </g>
     {wallSegments.map((w,i)=><line key={i} x1={w.a[0]} y1={w.a[1]} x2={w.b[0]} y2={w.b[1]} stroke="#8a9183" strokeWidth=".18" pointerEvents="none"/>)}
-    {doors.map(d=>{const t=[-d.normal[1],d.normal[0]],a=[d.point[0]-t[0]*d.width/2,d.point[1]-t[1]*d.width/2],b=[d.point[0]+t[0]*d.width/2,d.point[1]+t[1]*d.width/2];return <g key={d.id} className="svg-door" pointerEvents="none"><line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#ae8d58" strokeWidth=".16"/>{d.kind==='single'&&<path d={`M ${a[0]} ${a[1]} L ${a[0]-d.normal[0]*d.width} ${a[1]-d.normal[1]*d.width} A ${d.width} ${d.width} 0 0 1 ${b[0]} ${b[1]}`} fill="none" stroke="#6d999f" strokeWidth=".08"/>}</g>;})}
+    {windows.map(w=><line className="map-window" key={w.id} x1={w.a[0]} y1={w.a[1]} x2={w.b[0]} y2={w.b[1]} stroke="#6fadb3" strokeWidth=".34" pointerEvents="none"/>)}
+    {doors.filter(d=>d.render).map(d=>{const t=[-d.normal[1],d.normal[0]],a=[d.point[0]-t[0]*d.width/2,d.point[1]-t[1]*d.width/2],b=[d.point[0]+t[0]*d.width/2,d.point[1]+t[1]*d.width/2];return <g key={d.id} className="svg-door" pointerEvents="none"><line x1={a[0]} y1={a[1]} x2={b[0]} y2={b[1]} stroke="#ae8d58" strokeWidth=".16"/>{d.kind==='single'&&<path d={`M ${a[0]} ${a[1]} L ${a[0]-d.normal[0]*d.width} ${a[1]-d.normal[1]*d.width} A ${d.width} ${d.width} 0 0 1 ${b[0]} ${b[1]}`} fill="none" stroke="#6d999f" strokeWidth=".08"/>}</g>;})}
     <g pointerEvents="none">
       {rooms.filter(r=>r.id==='stairs-east'||r.id==='stairs-main').map(r=>{const xs=r.polygon.map(p=>p[0]),zs=r.polygon.map(p=>p[1]),l=Math.min(...xs),t=Math.min(...zs),w=Math.max(...xs)-l,h=Math.max(...zs)-t;return <g key={r.id}>{Array.from({length:14},(_,i)=><line key={i} x1={l+.3} x2={l+w-.3} y1={t+.8+i*(h-1.6)/14} y2={t+.8+i*(h-1.6)/14} stroke="#879285" strokeWidth=".11"/>)}{r.id==='stairs-east'&&<line x1={l+w/2} x2={l+w/2} y1={t+1} y2={t+h-.5} stroke="#879285" strokeWidth=".3"/>}</g>;})}
       {doors.filter(d=>d.storefront).map(d=>{const t=[-d.normal[1],d.normal[0]];return <g key={d.id}>{Array.from({length:9},(_,i)=>{const x=d.point[0]+t[0]*(i/8-.5)*d.width,z=d.point[1]+t[1]*(i/8-.5)*d.width;return <circle key={i} cx={x} cy={z} r=".1" fill="#596f6b"/>;})}</g>;})}
-      {doors.filter(d=>d.exitOnly).map(d=><text key={d.id} x={d.point[0]} y={d.point[1]-1} fontSize=".95" textAnchor="middle" fill="#a12520">EXIT ONLY ↑</text>)}
+      {doors.filter(d=>d.exitOnly).map(d=><text key={d.id} x={d.point[0]} y={d.point[1]-1} fontSize=".95" textAnchor="middle" fill="#a12520">EXIT ONLY {d.normal[0]>0?'→':d.normal[0]<0?'←':d.normal[1]>0?'↓':'↑'}</text>)}
       {(()=>{const p=roomById['198'].polygon,x=(p[0][0]+p[1][0])/2;return <line x1={x} x2={x} y1={p[0][1]+1} y2={p[2][1]-1} stroke="#eee5c8" strokeWidth=".15" strokeDasharray="1.7 1.8"/>;})()}
     </g>
     <circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r={sculptureRadius} fill="#b7b6ab"/><circle cx={sculptureCenter[0]} cy={sculptureCenter[1]} r={sculptureRadius} fill="none" stroke="#7b827a" strokeWidth=".5"/>

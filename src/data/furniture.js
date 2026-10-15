@@ -1,4 +1,5 @@
 import { rooms, cadPoint as P, sculptureCenter } from './questromMapData.js';
+import { officeHoursTables } from './northWingLayout.js';
 import { polygonBounds, pointInPolygon } from '../lib/geometry.js';
 // CAD furniture patterns are schematic: no inferred heights are presented as measured.
 export const furnitureBoxes=[],furnitureRounds=[],chairs=[],auditoriumTiers=[];
@@ -17,6 +18,12 @@ for(const r of rooms){
  if(r.furniture==='storage')for(let i=0;i<3;i++)box(b.minX+.6,.8,b.minZ+1+i*1.7,.8,1.5,1.2,'cabinet');
  if(r.furniture==='restroom')for(let i=0;i<3;i++){box(b.minX+1.2+i*1.7,.7,b.minZ+.65,1.1,1.2,.8,'porcelain');box(b.minX+1.2+i*1.7,1.5,b.minZ+.16,1.1,1.3,.06,'glass');}
  if(r.furniture==='stairs'){const stepDepth=(d-1.2)/16;for(let i=0;i<16;i++)box(x,.25+i*.09,b.maxZ-.6-(i+.5)*stepDepth,w-.8,.18,stepDepth,'stair');}
+}
+// Room 150: small discussion settings, leaving the entrance and glazing clear.
+for(const [i,[x,z]]of officeHoursTables.entries()){
+ box(x,.92,z,2.5,.16,1.15,'wood');box(x,.55,z,.2,.7,.7,'metal');
+ chair(x,z-1.08,Math.PI);chair(x,z+1.08,0);
+ if(i===2){chair(x-1.7,z,-Math.PI/2);chair(x+1.7,z,Math.PI/2);}
 }
 // Sixteen curved ranks with two clear cross aisles: 373 schematic seats.
 for(let row=0;row<16;row++){

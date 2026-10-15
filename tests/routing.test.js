@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { rooms, doors, roomById, wallSegments, cadPoint, mapRevision, sculptureCenter, serviceConnections } from '../src/data/questromMapData.js';
+import { rooms, doors, windows, roomById, wallSegments, cadPoint, mapRevision, sculptureCenter, serviceConnections } from '../src/data/questromMapData.js';
+import { undergraduateCounter, lounge115Sofa } from '../src/data/northWingLayout.js';
 import { sculptureRadius, atriumWalkablePolygon, atriumSeats, atriumTables } from '../src/data/atriumLayout.js';
 import { receptionFootprint } from '../src/data/susiloLayout.js';
 import { chairs, stagePolygon, planters } from '../src/data/furniture.js';
@@ -10,7 +11,7 @@ import { distance, pointInPolygon, projectOnSegment, segmentIntersection, splitW
 test('CAD revision removes 101H and replaces the older admissions labels',()=>{
  assert.equal(roomById['101H'],undefined);assert.equal(roomById['101D-east'],undefined);assert.deepEqual(searchRooms('101H'),[]);
  for(const id of ['101I','101A','101B','101C','101D','101E','101F','101G','102D','102E','105D','105E','105F','105G','105H','113','117A','125A','188'])assert.ok(roomById[id],id);
- assert.equal(new Set(rooms.map(r=>r.id)).size,rooms.length);assert.equal(mapRevision.source,'Thirteen user-supplied CAD screenshots');
+ assert.equal(new Set(rooms.map(r=>r.id)).size,rooms.length);assert.equal(mapRevision.source,'Fourteen user-supplied CAD screenshots');
 });
 test('every authored door is on its room boundary and enters its interior',()=>{
  for(const d of doors){const r=roomById[d.roomId],closest=Math.min(...r.polygon.map((p,i)=>projectOnSegment(d.point,p,r.polygon[(i+1)%r.polygon.length]).distance));assert.ok(closest<.02,`${d.id} misses wall by ${closest}`);assert.ok(pointInPolygon(d.inside,r.polygon),`${d.id} arrival must be inside`);assert.ok(!pointInPolygon(d.outside,r.polygon),`${d.id} approach must be outside`);assert.ok(d.width>=1.6);}
@@ -114,4 +115,29 @@ test('Susilo counter is inside its room and visitor arrival stays in front of re
 test('loading dock bays have raised shutter portals and preserve the center support',()=>{
  const r=roomById['188'];assert.equal(r.name,'Loading Dock');assert.equal(r.doors.length,2);assert.ok(r.doors.every(d=>d.kind==='shutter'));
  assert.equal(pointInPolygon(cadPoint(1,1460,280),r.polygon),false);assert.ok(findRoute('main-entrance','188'));
+});
+
+test('passage 113 provides the direct public entry to 115; the 135–138 door permits exit only',()=>{
+ const entry=roomById.udc.doors[1],exit=roomById.udc.doors[0];assert.equal(exit.exitOnly,true);
+ const crosses=(r,d)=>r.points.some(p=>distance(p,d.point)<.001);
+ for(const origin of ['main-entrance','silber-entrance']){const r=findRoute(origin,'116');assert.ok(crosses(r,entry));assert.ok(!crosses(r,exit));assert.ok(r.steps.some(s=>s.text.includes('passage 113 into area 115')));}
+ assert.ok(findRoute('main-entrance','116').units<120,'Main entrance must not detour around the west wing');
+ const outgoing=findRoute('116','silber-entrance');assert.ok(crosses(outgoing,exit));assert.ok(outgoing.steps.some(s=>s.text.includes('between 135 and 138')));assert.ok(outgoing.units<findRoute('silber-entrance','116').units);
+ assert.equal(roomById['silber-entrance'].doors[0].exitOnly,false);
+});
+
+test('114 uses both doors and 189 requires successive outer and inner thresholds',()=>{
+ assert.equal(findRoute('116','114').endDoor,'114:door1');assert.equal(findRoute('main-entrance','114').endDoor,'114:door2');
+ const r=findRoute('main-entrance','restroom-w'),outer=roomById['restroom-w-vestibule'].doors[0],inner=roomById['restroom-w'].doors[0];
+ const index=d=>r.points.findIndex(p=>distance(p,d.point)<.001);assert.ok(index(outer)>=0);assert.ok(index(inner)>index(outer));assert.match(r.steps.map(s=>s.text).join(' '),/first door.*vestibule.*inner door/);
+ const reverse=findRoute('restroom-w','main-entrance');assert.ok(Math.abs(r.units-reverse.units)<1e-7);
+});
+
+test('115 lounge, 115A reception and 150 office hours respect their CAD geometry and glazing',()=>{
+ assert.match(roomById['115'].name,/Lounge/);assert.match(roomById['115A'].name,/Reception/);assert.match(roomById['150'].name,/Office Hours/);
+ assert.ok(pointInPolygon(lounge115Sofa.center,roomById['115'].polygon));
+ assert.ok(!pointInPolygon(findRoute('main-entrance','115A').points.at(-1),undergraduateCounter));
+ assert.equal(windows.length,3);for(const w of windows){assert.ok(wallSegments.some(s=>s.windowId===w.id&&s.height===.65));assert.ok(!doors.some(d=>distance(d.point,w.point)<.001));}
+ // The two sides of the shared 113 portal render once; open semantic zones have no invented door frames.
+ assert.equal(roomById.udc.doors[1].render,false);assert.equal(roomById['115'].doors[0].render,false);assert.equal(roomById['115A'].doors[0].render,false);
 });
