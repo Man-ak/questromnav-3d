@@ -1,6 +1,7 @@
 import { corridorNodes, corridorEdges, interiorLinks, roomById, rooms, doors, wallSegments, sculptureCenter } from '../data/questromMapData.js';
 import { connectOpenAtrium } from './atriumNavigation.js';
 import { atriumWalkablePolygon, sculptureRadius } from '../data/atriumLayout.js';
+import { pointInPolygon } from './geometry.js';
 export const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
 const same=(a,b)=>distance(a,b)<0.01;
 /** Every connector is authored against a visible CAD door. No nearest-wall snap. */
@@ -46,7 +47,8 @@ export function findRoute(startId,endId){
     if(Math.abs(cross)<.15||Math.min(distance(p,q),distance(q,r))<1.5)continue;
     const landmark=Object.entries(corridorNodes).filter(([k])=>['atriumSouth','atriumNorth','audEast','audSouth','feldEntry','westLobby','northHall','gradEntry'].includes(k)).sort((a,b)=>distance(a[1],q)-distance(b[1],q))[0];
     const labels={atriumSouth:'the Chiles Atrium',atriumNorth:'the main staircase',audEast:'Auditorium 105',audSouth:'Auditorium 105',feldEntry:'the Feld Center',westLobby:'the west lobby',northHall:'the undergraduate offices',gradEntry:'Graduate Admissions'};
-    steps.push({text:`Turn ${cross>0?'right':'left'}${landmark&&distance(landmark[1],q)<13?' near '+labels[landmark[0]]:''} and continue along the corridor.`,kind:cross>0?'right':'left',point:q});
+    const surface=pointInPolygon(q,atriumWalkablePolygon)?'across the open atrium':'along the corridor';
+    steps.push({text:`Turn ${cross>0?'right':'left'}${landmark&&distance(landmark[1],q)<13?' near '+labels[landmark[0]]:''} and continue ${surface}.`,kind:cross>0?'right':'left',point:q});
   }
   if(end.suite==='108'||endId==='108')steps.push({text:'Access suite 108 through the main Feld Center entrance. Exterior suite doors are exit only.',kind:'info'});
   steps.push({text:`Enter ${end.short||end.name} through its ${endDoor.kind==='open'?'open entrance':endDoor.kind==='shutter'?'open loading bay':'marked doorway'}${end.number?' · '+end.number:''}.`,kind:'arrive',point:points.at(-1)});

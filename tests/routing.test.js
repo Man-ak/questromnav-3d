@@ -80,7 +80,7 @@ test('four facing east lifts, connected auditorium foyer and separate projector 
 });
 
 test('atrium permits short traversals to stairs and lifts while clearing the sculpture',()=>{
- const route=findRoute('main-entrance','stairs-main');assert.ok(route.units<60);assert.equal(roomById['stairs-main'].doors[0].node,'atriumStairFoot');
+ const route=findRoute('main-entrance','stairs-main');assert.ok(route.units<60);assert.ok(route.steps.some(s=>s.text.includes('across the open atrium')));assert.equal(roomById['stairs-main'].doors[0].node,'atriumStairFoot');
  for(const id of ['stairs-main','elevator-east','elevator-east-3','elevator-east-4']){const r=findRoute('main-entrance',id);for(let i=1;i<r.points.length;i++)assert.ok(projectOnSegment(sculptureCenter,r.points[i-1],r.points[i]).distance>4.5,`${id} crosses sculpture`);}
  assert.equal(roomById['198'].outdoor,true);assert.equal(roomById['198'].height,0);assert.match(roomById['198'].name,/Exterior Parking/);
 });
